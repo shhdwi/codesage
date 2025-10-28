@@ -1,0 +1,172 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl", "rhel-openssl-3.0.x"]
+  output        = "../app/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  agents        Agent[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Installation {
+  id           String       @id @default(cuid())
+  githubId     BigInt       @unique
+  owner        String
+  ownerType    String
+  repositories Repository[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Repository {
+  id             String                   @id @default(cuid())
+  installationId String
+  installation   Installation             @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  fullName       String                   @unique
+  defaultBranch  String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  agentBindings  AgentRepositoryBinding[]
+  reviews        Review[]
+}
+
+model Agent {
+  id                String                   @id @default(cuid())
+  userId            String
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  generationPrompt  String                   @db.Text
+  fileTypeFilters   String[]                 @default([])
+  severityThreshold Int                      @default(1)
+  enabled           Boolean                  @default(true)
+  evaluationPrompt  String                   @db.Text
+  evaluationDims    String[]                 @default(["relevance", "accuracy", "actionability", "clarity"])
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  bindings          AgentRepositoryBinding[]
+  reviews           Review[]
+  costTracking      CostTracking[]
+}
+
+model AgentRepositoryBinding {
+  id      String     @id @default(cuid())
+  agentId String
+  agent   Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  repoId  String
+  repo    Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  enabled Boolean    @default(true)
+
+  @@unique([agentId, repoId])
+}
+
+model Review {
+  id              String       @id @default(cuid())
+  repoId          String
+  repo            Repository   @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  agentId         String
+  agent           Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  prNumber        Int
+  commitSha       String
+  filePath        String
+  lineNumber      Int
+  codeChunk       String       @db.Text
+  comment         String       @db.Text
+  severity        Int
+  postedAt        DateTime
+  githubCommentId BigInt?
+  rawLLM          Json?
+  createdAt       DateTime     @default(now())
+  evaluations     Evaluation[]
+  feedbacks       Feedback[]
+  isThreadReply   Boolean      @default(false)
+  parentReviewId  String?
+
+  @@index([repoId, prNumber])
+  @@index([agentId])
+  @@index([githubCommentId])
+}
+
+model Evaluation {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  scores    Json
+  summary   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([reviewId])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  rating    Int
+  createdAt DateTime @default(now())
+
+  @@index([reviewId])
+}
+
+model CostTracking {
+  id               String   @id @default(cuid())
+  agentId          String
+  agent            Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  repoId           String?
+  generationTokens Int
+  evaluationTokens Int
+  totalTokens      Int
+  estimatedCostUsd Float
+  createdAt        DateTime @default(now())
+
+  @@index([agentId, createdAt])
+}

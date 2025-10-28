@@ -22,7 +22,7 @@ export async function POST(
     const review = await prisma.review.findFirst({
       where: {
         id,
-        agent: { userId: session.user.id },
+        agent: { userId: session.user?.id },
       },
     });
 
@@ -43,7 +43,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to submit feedback" }, { status: 500 });
   }
@@ -61,7 +61,7 @@ export async function GET(
       where: {
         reviewId: id,
         review: {
-          agent: { userId: session.user.id },
+          agent: { userId: session.user?.id },
         },
       },
       orderBy: { createdAt: 'desc' },

@@ -53,11 +53,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       where: {
         repoId: repository.id,
         enabled: true,
+        agent: {
+          enabled: true
+        }
       },
       include: {
-        agent: {
-          where: { enabled: true },
-        },
+        agent: true,
       },
     });
 

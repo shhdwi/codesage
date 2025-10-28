@@ -6,6 +6,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth();
 
+    if (!session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     // Get all repositories from user's installations
     // In a real app, we'd fetch from GitHub API via installations
     // For now, just return repos that have been seen
@@ -13,10 +17,13 @@ export async function GET(req: NextRequest) {
       orderBy: { fullName: 'asc' },
       include: {
         agentBindings: {
-          include: {
+          where: {
             agent: {
-              where: { userId: session.user.id },
-            },
+              userId: session.user.id
+            }
+          },
+          include: {
+            agent: true,
           },
         },
         _count: {

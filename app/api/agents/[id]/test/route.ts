@@ -22,7 +22,7 @@ export async function POST(
 
     // Check ownership
     const agent = await prisma.agent.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: session.user?.id },
     });
 
     if (!agent) {
@@ -63,7 +63,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     console.error("Test error:", error);
     return NextResponse.json({ error: "Failed to test agent" }, { status: 500 });

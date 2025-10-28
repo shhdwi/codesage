@@ -5,6 +5,10 @@ import Link from "next/link";
 export default async function AgentsPage() {
   const session = await requireAuth();
 
+  if (!session.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
   const agents = await prisma.agent.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },

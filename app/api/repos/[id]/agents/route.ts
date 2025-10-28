@@ -16,12 +16,19 @@ export async function GET(
     const session = await requireAuth();
     const { id } = await params;
 
+    if (!session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const bindings = await prisma.agentRepositoryBinding.findMany({
-      where: { repoId: id },
-      include: {
+      where: { 
+        repoId: id,
         agent: {
-          where: { userId: session.user.id },
-        },
+          userId: session.user.id
+        }
+      },
+      include: {
+        agent: true,
       },
     });
 
@@ -47,7 +54,7 @@ export async function POST(
 
     // Verify agent ownership
     const agent = await prisma.agent.findFirst({
-      where: { id: agentId, userId: session.user.id },
+      where: { id: agentId, userId: session.user?.id },
     });
 
     if (!agent) {
@@ -68,7 +75,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to bind agent" }, { status: 500 });
   }
@@ -90,7 +97,7 @@ export async function DELETE(
 
     // Verify agent ownership
     const agent = await prisma.agent.findFirst({
-      where: { id: agentId, userId: session.user.id },
+      where: { id: agentId, userId: session.user?.id },
     });
 
     if (!agent) {

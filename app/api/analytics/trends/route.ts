@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     // Build where clause
     const where: any = {
-      agent: { userId: session.user.id },
+      agent: { userId: session.user?.id },
       createdAt: { gte: since },
     };
 

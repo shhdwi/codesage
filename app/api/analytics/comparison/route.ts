@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     // Get all reviews with evaluations for user's agents
     const reviews = await prisma.review.findMany({
       where: {
-        agent: { userId: session.user.id },
+        agent: { userId: session.user?.id },
         createdAt: { gte: since },
       },
       include: {

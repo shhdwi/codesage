@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const session = await requireAuth();
     
     const agents = await prisma.agent.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user?.id },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -42,6 +42,10 @@ export async function POST(req: NextRequest) {
     const session = await requireAuth();
     const body = await req.json();
     
+    if (!session.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const validated = AgentSchema.parse(body);
 
     const agent = await prisma.agent.create({
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to create agent" }, { status: 500 });
   }

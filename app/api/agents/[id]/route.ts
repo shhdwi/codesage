@@ -25,7 +25,7 @@ export async function GET(
     const agent = await prisma.agent.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: session.user?.id,
       },
       include: {
         bindings: {
@@ -63,7 +63,7 @@ export async function PATCH(
 
     // Check ownership
     const existing = await prisma.agent.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: session.user?.id },
     });
 
     if (!existing) {
@@ -81,7 +81,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to update agent" }, { status: 500 });
   }
@@ -97,7 +97,7 @@ export async function DELETE(
 
     // Check ownership
     const existing = await prisma.agent.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: session.user?.id },
     });
 
     if (!existing) {

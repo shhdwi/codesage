@@ -5,6 +5,10 @@ import Link from "next/link";
 export default async function DashboardPage() {
   const session = await requireAuth();
 
+  if (!session.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
   const [agents, reviews, recentReviews] = await Promise.all([
     prisma.agent.findMany({
       where: { userId: session.user.id },

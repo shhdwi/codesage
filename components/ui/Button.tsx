@@ -1,41 +1,30 @@
-"use client";
+import { ButtonHTMLAttributes } from "react";
 
-import { ReactNode } from "react";
-
-interface ButtonProps {
-  children: ReactNode;
-  onClick?: () => void;
-  type?: "button" | "submit" | "reset";
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger";
-  className?: string;
-  disabled?: boolean;
+  children: React.ReactNode;
 }
 
 export function Button({
-  children,
-  onClick,
-  type = "button",
   variant = "primary",
   className = "",
-  disabled = false,
+  children,
+  ...props
 }: ButtonProps) {
-  const baseStyles = "px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const baseStyles = "inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed";
   
-  const variantStyles = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400",
-    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500/30 shadow-sm hover:shadow",
+    secondary: "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-gray-500/20",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500/30 shadow-sm hover:shadow",
   };
 
   return (
     <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      className={`${baseStyles} ${variants[variant]} ${className}`}
+      {...props}
     >
       {children}
     </button>
   );
 }
-

@@ -120,164 +120,263 @@ export function AgentForm({ onSubmit, initialData, saving }: AgentFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit((data) => onSubmit(processFormData(data)))} className="space-y-6">
-      {/* Basic Info */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Agent Name *
-        </label>
-        <input
-          type="text"
-          {...register("name")}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-          placeholder="e.g., Security Expert, Performance Reviewer"
-        />
-        {errors.name && (
-          <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
-          {...register("description")}
-          rows={2}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-          placeholder="Optional description of what this agent focuses on"
-        />
-      </div>
-
-      {/* Generation Prompt */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Generation Prompt *
-        </label>
-        <p className="mt-1 text-xs text-gray-500">
-          Available variables: {"{code_chunk}"}, {"{file_type}"}, {"{file_path}"}
-        </p>
-        <textarea
-          {...register("generationPrompt")}
-          rows={8}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-        />
-        {errors.generationPrompt && (
-          <p className="mt-1 text-sm text-red-600">{errors.generationPrompt.message}</p>
-        )}
-      </div>
-
-      {/* Evaluation Prompt */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Evaluation Prompt *
-        </label>
-        <p className="mt-1 text-xs text-gray-500">
-          Available variables: {"{code_chunk}"}, {"{review_comment}"}, {"{file_path}"}
-        </p>
-        <textarea
-          {...register("evaluationPrompt")}
-          rows={6}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-        />
-        {errors.evaluationPrompt && (
-          <p className="mt-1 text-sm text-red-600">{errors.evaluationPrompt.message}</p>
-        )}
-      </div>
-
-      {/* Evaluation Dimensions */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Evaluation Dimensions
-        </label>
-        <input
-          type="text"
-          {...register("evaluationDims")}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-          placeholder="e.g., relevance, accuracy, actionability, clarity"
-        />
-        <p className="mt-1 text-xs text-gray-500">Comma-separated list</p>
-      </div>
-
-      {/* Filters & Settings */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            File Type Filters
-          </label>
-          <input
-            type="text"
-            {...register("fileTypeFilters")}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-            placeholder="e.g., .ts, .tsx, .js"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Leave empty for all files, or comma-separated extensions
-          </p>
+    <form onSubmit={handleSubmit((data) => onSubmit(processFormData(data)))} className="space-y-8">
+      {/* Basic Info Section */}
+      <div className="space-y-6">
+        <div className="border-l-4 border-blue-500 pl-4">
+          <h3 className="text-lg font-bold text-gray-900">Basic Information</h3>
+          <p className="mt-1 text-sm text-gray-500">Configure your agent's identity and purpose</p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Severity Threshold (1-5)
-          </label>
-          <input
-            type="number"
-            {...register("severityThreshold", { valueAsNumber: true })}
-            min={1}
-            max={5}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Only post comments with severity at or above this level
-          </p>
+        <div className="space-y-5">
+          <div>
+            <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+              Agent Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              {...register("name")}
+              className="text-base"
+              placeholder="e.g., Security Expert, Performance Reviewer"
+            />
+            {errors.name && (
+              <p className="mt-2 text-sm font-medium text-red-600 flex items-center gap-1">
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-semibold text-gray-900 mb-2">
+              Description
+            </label>
+            <textarea
+              id="description"
+              {...register("description")}
+              rows={3}
+              className="text-base"
+              placeholder="Describe what this agent focuses on (optional)"
+            />
+            <p className="mt-2 text-xs text-gray-500">Help your team understand this agent's purpose</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          {...register("enabled")}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label className="ml-2 block text-sm text-gray-900">
-          Enable this agent
-        </label>
+      {/* Prompts Section */}
+      <div className="space-y-6">
+        <div className="border-l-4 border-purple-500 pl-4">
+          <h3 className="text-lg font-bold text-gray-900">AI Prompts</h3>
+          <p className="mt-1 text-sm text-gray-500">Define how your agent reviews and evaluates code</p>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <label htmlFor="generationPrompt" className="block text-sm font-semibold text-gray-900 mb-2">
+              Generation Prompt <span className="text-red-500">*</span>
+            </label>
+            <div className="mb-2 flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200">
+                {"{code_chunk}"}
+              </span>
+              <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200">
+                {"{file_type}"}
+              </span>
+              <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200">
+                {"{file_path}"}
+              </span>
+            </div>
+            <textarea
+              id="generationPrompt"
+              {...register("generationPrompt")}
+              rows={10}
+              className="font-mono text-sm leading-relaxed"
+              placeholder="You are a code reviewer..."
+            />
+            {errors.generationPrompt && (
+              <p className="mt-2 text-sm font-medium text-red-600">{errors.generationPrompt.message}</p>
+            )}
+            <p className="mt-2 text-xs text-gray-500">This prompt guides how the agent reviews code</p>
+          </div>
+
+          <div>
+            <label htmlFor="evaluationPrompt" className="block text-sm font-semibold text-gray-900 mb-2">
+              Evaluation Prompt <span className="text-red-500">*</span>
+            </label>
+            <div className="mb-2 flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-md bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 border border-purple-200">
+                {"{code_chunk}"}
+              </span>
+              <span className="inline-flex items-center rounded-md bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 border border-purple-200">
+                {"{review_comment}"}
+              </span>
+              <span className="inline-flex items-center rounded-md bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 border border-purple-200">
+                {"{file_path}"}
+              </span>
+            </div>
+            <textarea
+              id="evaluationPrompt"
+              {...register("evaluationPrompt")}
+              rows={8}
+              className="font-mono text-sm leading-relaxed"
+              placeholder="Evaluate the review quality..."
+            />
+            {errors.evaluationPrompt && (
+              <p className="mt-2 text-sm font-medium text-red-600">{errors.evaluationPrompt.message}</p>
+            )}
+            <p className="mt-2 text-xs text-gray-500">This prompt evaluates the quality of generated reviews</p>
+          </div>
+
+          <div>
+            <label htmlFor="evaluationDims" className="block text-sm font-semibold text-gray-900 mb-2">
+              Evaluation Dimensions
+            </label>
+            <input
+              id="evaluationDims"
+              type="text"
+              {...register("evaluationDims")}
+              className="text-base font-medium"
+              placeholder="relevance, accuracy, actionability, clarity"
+            />
+            <p className="mt-2 text-xs text-gray-500">Comma-separated quality metrics to track</p>
+          </div>
+        </div>
       </div>
 
-      {/* Test Prompt */}
-      <div className="border-t pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Test Prompt</h3>
+      {/* Configuration Section */}
+      <div className="space-y-6">
+        <div className="border-l-4 border-green-500 pl-4">
+          <h3 className="text-lg font-bold text-gray-900">Configuration</h3>
+          <p className="mt-1 text-sm text-gray-500">Fine-tune your agent's behavior</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="fileTypeFilters" className="block text-sm font-semibold text-gray-900 mb-2">
+              File Type Filters
+            </label>
+            <input
+              id="fileTypeFilters"
+              type="text"
+              {...register("fileTypeFilters")}
+              className="text-base font-mono"
+              placeholder=".ts, .tsx, .js"
+            />
+            <p className="mt-2 text-xs text-gray-500">Leave empty to review all file types</p>
+          </div>
+
+          <div>
+            <label htmlFor="severityThreshold" className="block text-sm font-semibold text-gray-900 mb-2">
+              Severity Threshold
+            </label>
+            <div className="relative">
+              <input
+                id="severityThreshold"
+                type="number"
+                {...register("severityThreshold", { valueAsNumber: true })}
+                min={1}
+                max={5}
+                className="text-base font-bold text-center"
+              />
+              <div className="mt-2 flex justify-between text-xs text-gray-500 px-1">
+                <span>Minor</span>
+                <span>Critical</span>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Only post comments at or above this severity (1-5)</p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3 p-4 rounded-lg bg-gray-50 border-2 border-gray-200">
+          <input
+            id="enabled"
+            type="checkbox"
+            {...register("enabled")}
+            className="h-5 w-5"
+          />
+          <label htmlFor="enabled" className="text-sm font-semibold text-gray-900 cursor-pointer">
+            Enable this agent for code reviews
+          </label>
+        </div>
+      </div>
+
+      {/* Test Section */}
+      <div className="space-y-4 border-t-2 border-gray-200 pt-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Test Your Configuration</h3>
+            <p className="mt-1 text-sm text-gray-500">Validate prompts with sample code</p>
+          </div>
           <Button
             type="button"
             onClick={handleTest}
             disabled={testing}
             variant="secondary"
+            className="px-6 py-2.5"
           >
-            {testing ? "Testing..." : "Test with Sample Code"}
+            {testing ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Testing...
+              </span>
+            ) : (
+              "Run Test"
+            )}
           </Button>
         </div>
 
         {testResult && (
-          <div className="rounded-md bg-gray-50 p-4">
+          <div className="rounded-xl border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 animate-slide-in">
             {testResult.error ? (
-              <p className="text-sm text-red-600">{testResult.error}</p>
+              <div className="flex items-center gap-3 text-red-600">
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <p className="font-medium">{testResult.error}</p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Generated Comment:</p>
-                  <p className="mt-1 text-sm text-gray-900">{testResult.comment}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Generated Review</span>
+                  </div>
+                  <div className="rounded-lg bg-white border-2 border-gray-200 p-4">
+                    <p className="text-sm leading-relaxed text-gray-900">{testResult.comment}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500">Severity: {testResult.severity}/5</p>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-700">Severity:</span>
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800">
+                      {testResult.severity}/5
+                    </span>
+                  </div>
                 </div>
+
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Evaluation Scores:</p>
-                  <div className="mt-1 flex gap-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="h-5 w-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Evaluation Scores</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {Object.entries(testResult.evaluation.scores).map(([dim, score]) => (
-                      <span key={dim} className="text-xs">
-                        {dim}: <strong>{score as number}/10</strong>
-                      </span>
+                      <div key={dim} className="rounded-lg bg-white border-2 border-gray-200 p-3 text-center">
+                        <div className="text-2xl font-bold text-gray-900">{score as number}</div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase mt-1">{dim}</div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -287,13 +386,32 @@ export function AgentForm({ onSubmit, initialData, saving }: AgentFormProps) {
         )}
       </div>
 
-      {/* Submit */}
-      <div className="flex justify-end gap-4 border-t pt-6">
-        <Button type="button" variant="secondary" onClick={() => window.history.back()}>
+      {/* Action Buttons */}
+      <div className="flex items-center justify-end gap-4 border-t-2 border-gray-200 pt-8">
+        <Button 
+          type="button" 
+          variant="secondary" 
+          onClick={() => window.history.back()}
+          className="px-6 py-2.5"
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Save Agent"}
+        <Button 
+          type="submit" 
+          disabled={saving}
+          className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+        >
+          {saving ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </span>
+          ) : (
+            "Save Agent"
+          )}
         </Button>
       </div>
     </form>

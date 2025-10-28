@@ -33,22 +33,27 @@ export default function NewAgentPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Create New Agent</h1>
-        <p className="mt-2 text-gray-600">
-          Configure a new code review agent with custom prompts and rules.
+    <div className="max-w-5xl mx-auto space-y-8 animate-slide-in">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Create New Agent</h1>
+        <p className="mt-3 text-lg text-gray-600">
+          Configure an AI-powered code review agent with custom prompts and rules
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-xl bg-red-50 border-2 border-red-200 p-5">
+          <div className="flex items-center gap-3">
+            <svg className="h-6 w-6 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <p className="text-base font-semibold text-red-900">{error}</p>
+          </div>
         </div>
       )}
 
-      <div className="rounded-lg bg-white shadow">
-        <div className="px-4 py-5 sm:p-6">
+      <div className="rounded-2xl border-2 border-gray-200 bg-white shadow-lg">
+        <div className="p-8">
           <AgentForm onSubmit={handleSubmit} saving={saving} />
         </div>
       </div>

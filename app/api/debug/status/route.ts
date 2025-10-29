@@ -71,7 +71,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       setup: {
         hasGithubAppId: !!process.env.GITHUB_APP_ID,
-        hasGithubPrivateKey: !!process.env.GITHUB_APP_PRIVATE_KEY,
+        hasGithubPrivateKey: !!(process.env.GITHUB_APP_PRIVATE_KEY || process.env.GITHUB_APP_PRIVATE_KEY_B64),
         hasWebhookSecret: !!process.env.GITHUB_WEBHOOK_SECRET,
         hasDatabase: !!process.env.DATABASE_URL,
       },

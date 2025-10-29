@@ -62,59 +62,113 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       console.log(`✅ Database records ready (Prisma) in ${Date.now() - startTime}ms`);
     } else {
       // Use Supabase for much faster operations
-      const { data: existingInstallation } = await supabase
-        .from('Installation')
-        .select('id')
-        .eq('githubId', installationId) // Use camelCase!
-        .maybeSingle() as any;
+      console.log(`🔍 About to query Installation table for githubId: ${installationId}`);
+      console.log(`Supabase client configured: ${!!supabase}`);
       
-      let installationId_db: string;
-      
-      if (!existingInstallation) {
-        console.log(`Creating new installation ${installationId}...`);
-        const { data, error } = await supabase
+      try {
+        const queryStart = Date.now();
+        const { data: existingInstallation, error: queryError } = await supabase
           .from('Installation')
-          .insert({
-            githubId: installationId, // Use camelCase and bigint!
-            owner: event.repository.owner.login,
-            ownerType: event.repository.owner.type,
-          } as any)
           .select('id')
+          .eq('githubId', installationId)
           .maybeSingle() as any;
         
-        if (error) throw new Error(`Failed to create installation: ${error.message}`);
-        installationId_db = data?.id || '';
-      } else {
-        installationId_db = existingInstallation.id;
-      }
-      console.log(`Installation ready in ${Date.now() - startTime}ms`);
+        console.log(`Query completed in ${Date.now() - queryStart}ms`);
+        console.log(`Result:`, existingInstallation ? `Found ID: ${existingInstallation.id}` : 'Not found');
+        
+        if (queryError) {
+          console.error('Query error:', queryError);
+          throw new Error(`Supabase query error: ${queryError.message}`);
+        }
+        
+        let installationId_db: string;
+        
+        if (!existingInstallation) {
+          console.log(`Creating new installation ${installationId}...`);
+          const { data, error } = await supabase
+            .from('Installation')
+            .insert({
+              githubId: installationId,
+              owner: event.repository.owner.login,
+              ownerType: event.repository.owner.type,
+            } as any)
+            .select('id')
+            .maybeSingle() as any;
+          
+          if (error) throw new Error(`Failed to create installation: ${error.message}`);
+          installationId_db = data?.id || '';
+        } else {
+          installationId_db = existingInstallation.id;
+        }
+        console.log(`Installation ready in ${Date.now() - startTime}ms`);
 
-      // Find or create repository
-      const { data: existingRepo } = await supabase
-        .from('Repository')
-        .select('id, fullName') // Use camelCase!
-        .eq('fullName', repoFullName) // Use camelCase!
-        .maybeSingle() as any;
-      
-      if (!existingRepo) {
-        console.log(`Creating new repository ${repoFullName}...`);
-        const { data, error } = await supabase
+        // Find or create repository
+        const { data: existingRepo, error: repoError } = await supabase
           .from('Repository')
-          .insert({
-            fullName: repoFullName, // Use camelCase!
-            installationId: installationId_db, // Use camelCase!
-            defaultBranch: event.repository.default_branch, // Use camelCase!
-          } as any)
-          .select('id, fullName') // Use camelCase!
+          .select('id, fullName')
+          .eq('fullName', repoFullName)
           .maybeSingle() as any;
         
-        if (error) throw new Error(`Failed to create repository: ${error.message}`);
-        repository = { id: data?.id || '', fullName: data?.fullName || repoFullName };
-      } else {
-        repository = { id: existingRepo.id, fullName: existingRepo.fullName };
+        if (repoError) {
+          console.error('Repository query error:', repoError);
+          throw new Error(`Supabase repo query error: ${repoError.message}`);
+        }
+        
+        if (!existingRepo) {
+          console.log(`Creating new repository ${repoFullName}...`);
+          const { data, error } = await supabase
+            .from('Repository')
+            .insert({
+              fullName: repoFullName,
+              installationId: installationId_db,
+              defaultBranch: event.repository.default_branch,
+            } as any)
+            .select('id, fullName')
+            .maybeSingle() as any;
+          
+          if (error) throw new Error(`Failed to create repository: ${error.message}`);
+          repository = { id: data?.id || '', fullName: data?.fullName || repoFullName };
+        } else {
+          repository = { id: existingRepo.id, fullName: existingRepo.fullName };
+        }
+        
+        console.log(`✅ Database records ready (Supabase) in ${Date.now() - startTime}ms`);
+      } catch (err: any) {
+        console.error('❌ Supabase operation failed:', err.message);
+        console.error('Falling back to Prisma...');
+        
+        // Fallback to Prisma if Supabase fails
+        let installation = await prisma.installation.findUnique({
+          where: { githubId: BigInt(installationId) },
+        });
+        
+        if (!installation) {
+          installation = await prisma.installation.create({
+            data: {
+              githubId: BigInt(installationId),
+              owner: event.repository.owner.login,
+              ownerType: event.repository.owner.type,
+            },
+          });
+        }
+        
+        let repo_db = await prisma.repository.findUnique({
+          where: { fullName: repoFullName },
+        });
+        
+        if (!repo_db) {
+          repo_db = await prisma.repository.create({
+            data: {
+              fullName: repoFullName,
+              installationId: installation.id,
+              defaultBranch: event.repository.default_branch,
+            },
+          });
+        }
+        
+        repository = { id: repo_db.id, fullName: repo_db.fullName };
+        console.log(`✅ Database records ready (Prisma fallback) in ${Date.now() - startTime}ms`);
       }
-      
-      console.log(`✅ Database records ready (Supabase) in ${Date.now() - startTime}ms`);
     }
 
     // 2. Get files changed in PR

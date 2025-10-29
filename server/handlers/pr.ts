@@ -49,6 +49,8 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     console.log(`Found ${files.length} changed files`);
 
     // 3. Load enabled agents bound to this repo
+    console.log(`Looking for agent bindings for repo ID: ${repository.id}`);
+    
     const bindings = await prisma.agentRepositoryBinding.findMany({
       where: {
         repoId: repository.id,
@@ -62,11 +64,24 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       },
     });
 
+    console.log(`Found ${bindings.length} agent bindings (enabled: true)`);
+    
     const agents = bindings.map(b => b.agent).filter(Boolean);
     console.log(`Found ${agents.length} enabled agents for this repo`);
+    
+    if (bindings.length > 0) {
+      console.log('Agent details:', agents.map(a => ({
+        id: a.id,
+        name: a.name,
+        enabled: a.enabled,
+        severityThreshold: a.severityThreshold,
+        fileTypeFilters: a.fileTypeFilters,
+      })));
+    }
 
     if (agents.length === 0) {
-      console.log("No agents configured for this repository");
+      console.log("❌ No agents configured for this repository");
+      console.log("💡 Go to /dashboard/repos and check the checkbox for your agent!");
       return;
     }
 
@@ -75,7 +90,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       const filePath = file.filename;
       const patch = file.patch || "";
       
-      if (!patch) continue;
+      console.log(`Processing file: ${filePath} (has patch: ${!!patch})`);
+      
+      if (!patch) {
+        console.log(`⏭️ Skipping ${filePath} - no patch/diff available`);
+        continue;
+      }
 
       const fileExtension = filePath.split('.').pop() || "";
 
@@ -86,18 +106,18 @@ export async function handlePullRequestOpenedOrSync(event: any) {
             filePath.endsWith(filter) || `.${fileExtension}` === filter
           );
           if (!matches) {
-            console.log(`Skipping ${filePath} - doesn't match agent filters`);
+            console.log(`⏭️ Skipping ${filePath} for agent "${agent.name}" - doesn't match filters: ${agent.fileTypeFilters.join(', ')}`);
             continue;
           }
         }
 
-        console.log(`Agent "${agent.name}" reviewing ${filePath}`);
+        console.log(`✅ Agent "${agent.name}" reviewing ${filePath}`);
 
         // Parse diff and get changed lines
         const hunks = parseUnifiedDiff(patch);
         const changedLines = selectChangedLines(hunks);
 
-        console.log(`Found ${changedLines.length} changed lines to review`);
+        console.log(`Found ${changedLines.length} changed lines to review in ${filePath}`);
 
         for (const line of changedLines) {
           // Prepare prompt variables
@@ -108,15 +128,18 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           };
 
           // Generate review comment
+          console.log(`🤖 Running AI generation for line ${line.newLineNumber}...`);
           const generation = await runGeneration(agent, vars);
+
+          console.log(`AI response - Severity: ${generation.severity}, Comment length: ${generation.comment.length}, Threshold: ${agent.severityThreshold}`);
 
           // Skip if no comment or below severity threshold
           if (!generation.comment.trim() || generation.severity < agent.severityThreshold) {
-            console.log(`Skipping line ${line.newLineNumber} - severity ${generation.severity} below threshold ${agent.severityThreshold}`);
+            console.log(`⏭️ Skipping line ${line.newLineNumber} - severity ${generation.severity} below threshold ${agent.severityThreshold} or empty comment`);
             continue;
           }
 
-          console.log(`Posting comment on line ${line.newLineNumber}`);
+          console.log(`📝 Posting comment on line ${line.newLineNumber}`);
 
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
@@ -132,8 +155,16 @@ export async function handlePullRequestOpenedOrSync(event: any) {
               side: "RIGHT",
             });
             githubCommentId = BigInt(comment.data.id);
+            console.log(`✅ Comment posted successfully! GitHub comment ID: ${githubCommentId}`);
           } catch (error: any) {
-            console.error(`Failed to post comment:`, error.message);
+            console.error(`❌ Failed to post comment:`, error.message);
+            console.error(`Error details:`, {
+              status: error.status,
+              message: error.message,
+              file: filePath,
+              line: line.newLineNumber,
+              commit: commitSha,
+            });
             // Continue even if comment fails to post
           }
 

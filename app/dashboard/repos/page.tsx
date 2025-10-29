@@ -24,6 +24,7 @@ export default function ReposPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updatingBindings, setUpdatingBindings] = useState<Set<string>>(new Set());
 
   const loadData = async (sync = false) => {
     try {
@@ -67,21 +68,60 @@ export default function ReposPage() {
   };
 
   const toggleBinding = async (repoId: string, agentId: string, currentlyBound: boolean) => {
-    if (currentlyBound) {
-      await fetch(`/api/repos/${repoId}/agents?agentId=${agentId}`, {
-        method: "DELETE",
-      });
-    } else {
-      await fetch(`/api/repos/${repoId}/agents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId, enabled: true }),
+    const bindingKey = `${repoId}-${agentId}`;
+    
+    // Mark as updating
+    setUpdatingBindings(prev => new Set(prev).add(bindingKey));
+    
+    // Optimistic UI update - instant feedback!
+    setRepos(prevRepos => 
+      prevRepos.map(repo => {
+        if (repo.id !== repoId) return repo;
+        
+        if (currentlyBound) {
+          // Remove the binding
+          return {
+            ...repo,
+            agentBindings: repo.agentBindings.filter(b => b.agentId !== agentId)
+          };
+        } else {
+          // Add the binding
+          return {
+            ...repo,
+            agentBindings: [...repo.agentBindings, { agentId, enabled: true }]
+          };
+        }
+      })
+    );
+
+    // Background API call (non-blocking)
+    try {
+      if (currentlyBound) {
+        await fetch(`/api/repos/${repoId}/agents?agentId=${agentId}`, {
+          method: "DELETE",
+        });
+      } else {
+        await fetch(`/api/repos/${repoId}/agents`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentId, enabled: true }),
+        });
+      }
+    } catch (err) {
+      // Rollback on error
+      console.error('Toggle failed:', err);
+      setError('Failed to update agent binding');
+      // Revert the optimistic update
+      const reposData = await fetch("/api/repos").then(r => r.json());
+      setRepos(reposData);
+    } finally {
+      // Remove updating state
+      setUpdatingBindings(prev => {
+        const next = new Set(prev);
+        next.delete(bindingKey);
+        return next;
       });
     }
-
-    // Refresh
-    const reposData = await fetch("/api/repos").then(r => r.json());
-    setRepos(reposData);
   };
 
   if (loading) {
@@ -196,14 +236,25 @@ export default function ReposPage() {
                       </td>
                       {agents.map(agent => {
                         const isBound = boundAgentIds.has(agent.id);
+                        const bindingKey = `${repo.id}-${agent.id}`;
+                        const isUpdating = updatingBindings.has(bindingKey);
+                        
                         return (
                           <td key={agent.id} className="px-6 py-4 whitespace-nowrap text-center">
-                            <div className="flex justify-center">
+                            <div className="flex justify-center relative">
+                              {isUpdating && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <svg className="animate-spin h-4 w-4 text-blue-600" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                </div>
+                              )}
                               <input
                                 type="checkbox"
                                 checked={isBound}
                                 onChange={() => toggleBinding(repo.id, agent.id, isBound)}
-                                disabled={!agent.enabled}
+                                disabled={!agent.enabled || isUpdating}
                                 className="h-5 w-5 rounded-md border-2 border-gray-300 text-blue-600 transition-all duration-200 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                               />
                             </div>

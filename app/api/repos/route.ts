@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       await syncRepositoriesFromGitHub();
     }
 
-    // Get all repositories from database
+    // Get all repositories from database with optimized query
     const repos = await prisma.repository.findMany({
       orderBy: { fullName: 'asc' },
       include: {
@@ -89,14 +89,22 @@ export async function GET(req: NextRequest) {
               userId: session.user.id
             }
           },
-          include: {
-            agent: true,
+          select: {
+            agentId: true,
+            enabled: true,
+            agent: {
+              select: {
+                id: true,
+                name: true,
+              }
+            }
           },
         },
         _count: {
           select: { reviews: true },
         },
       },
+      take: 100, // Limit results
     });
 
     // If no repos and we haven't synced yet, try syncing
@@ -113,14 +121,22 @@ export async function GET(req: NextRequest) {
                   userId: session.user.id
                 }
               },
-              include: {
-                agent: true,
+              select: {
+                agentId: true,
+                enabled: true,
+                agent: {
+                  select: {
+                    id: true,
+                    name: true,
+                  }
+                }
               },
             },
             _count: {
               select: { reviews: true },
             },
           },
+          take: 100,
         });
         return NextResponse.json(syncedRepos);
       } catch (error) {

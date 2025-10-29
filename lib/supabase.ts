@@ -37,28 +37,43 @@ export async function findRepositoryByName(fullName: string) {
   console.log(`🔍 Supabase: Executing query...`);
   const startTime = Date.now();
   
-  const { data, error } = await supabase
-    .from('Repository')
-    .select('id, fullName')
-    .eq('fullName', fullName)
-    .single();
-  
-  const elapsed = Date.now() - startTime;
-  console.log(`🔍 Supabase: Query completed in ${elapsed}ms`);
-  
-  if (error) {
-    console.error(`❌ Supabase query error (${error.code}):`, error.message);
-    console.error(`   Error details:`, JSON.stringify(error, null, 2));
+  try {
+    // Add 5-second timeout to prevent indefinite hang
+    const queryPromise = supabase
+      .from('Repository')
+      .select('id, fullName')
+      .eq('fullName', fullName)
+      .single();
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Supabase query timeout after 5s')), 5000)
+    );
+    
+    const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+    const { data, error } = result;
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`🔍 Supabase: Query completed in ${elapsed}ms`);
+    
+    if (error) {
+      console.error(`❌ Supabase query error (${error.code}):`, error.message);
+      console.error(`   Error details:`, JSON.stringify(error, null, 2));
+      return null;
+    }
+    
+    if (!data) {
+      console.log(`⚠️ Supabase: No repository found with fullName="${fullName}"`);
+      return null;
+    }
+    
+    console.log(`✅ Supabase: Found repository:`, data);
+    return data as { id: string; fullName: string };
+  } catch (error: any) {
+    const elapsed = Date.now() - startTime;
+    console.error(`❌ Supabase query failed after ${elapsed}ms:`, error.message);
+    console.error(`   This likely means network connectivity issue from Vercel → Supabase`);
     return null;
   }
-  
-  if (!data) {
-    console.log(`⚠️ Supabase: No repository found with fullName="${fullName}"`);
-    return null;
-  }
-  
-  console.log(`✅ Supabase: Found repository:`, data);
-  return data as { id: string; fullName: string };
 }
 
 // Helper: Find agent bindings for a repo

@@ -1,28 +1,33 @@
-import { App } from "@octokit/app";
-import { Octokit } from "@octokit/rest";
+import { Octokit } from "@octokit/core";
+import { createAppAuth } from "@octokit/auth-app";
+import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 
-export function appClient() {
-  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY_B64
-    ? Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY_B64, "base64").toString("utf8")
-    : process.env.GITHUB_APP_PRIVATE_KEY || "";
+const MyOctokit = Octokit.plugin(restEndpointMethods);
 
-  return new App({
-    appId: process.env.GITHUB_APP_ID!,
-    privateKey,
-    webhooks: {
-      secret: process.env.GITHUB_WEBHOOK_SECRET!,
-    },
-  });
-}
-
-export async function installationOctokit(installationId: number): Promise<any> {
+export async function installationOctokit(installationId: number) {
   try {
     console.log(`🔑 Loading GitHub App credentials...`);
-    const app = appClient();
+    
+    const privateKey = process.env.GITHUB_APP_PRIVATE_KEY_B64
+      ? Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY_B64, "base64").toString("utf8")
+      : process.env.GITHUB_APP_PRIVATE_KEY || "";
+
+    if (!privateKey) {
+      throw new Error('GitHub App private key not configured');
+    }
+
     console.log(`🔑 Authenticating installation ${installationId}...`);
-    const octokit = await app.getInstallationOctokit(installationId);
+    
+    const octokit = new MyOctokit({
+      authStrategy: createAppAuth,
+      auth: {
+        appId: process.env.GITHUB_APP_ID!,
+        privateKey,
+        installationId,
+      },
+    });
+    
     console.log(`🔑 Installation authenticated successfully`);
-    // Return as 'any' to allow both .rest.pulls and .pulls patterns
     return octokit;
   } catch (error: any) {
     console.error(`❌ Failed to create installation Octokit:`, error.message);

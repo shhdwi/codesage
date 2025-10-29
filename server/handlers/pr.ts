@@ -70,12 +70,20 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     try {
       // Use request() method directly - @octokit/app doesn't have .pulls
       console.log(`🔍 Making request to GitHub API: GET /repos/${owner}/${repo}/pulls/${prNumber}/files`);
-      const filesResponse = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
+      
+      // Add timeout to prevent indefinite hang
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('GitHub API request timeout after 10s')), 10000)
+      );
+      
+      const requestPromise = octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
         owner,
         repo,
         pull_number: prNumber,
         per_page: 100,
       });
+      
+      const filesResponse = await Promise.race([requestPromise, timeoutPromise]) as any;
       
       files = filesResponse.data;
       console.log(`✅ Successfully fetched ${files.length} changed files`);
@@ -87,6 +95,13 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         response: error.response?.data,
       });
       console.error(`   Stack:`, error.stack?.substring(0, 500));
+      
+      // If it's a timeout, this means Vercel → GitHub connectivity is broken
+      if (error.message?.includes('timeout')) {
+        console.error(`   ⚠️ This is likely a network connectivity issue from Vercel to GitHub API`);
+        console.error(`   ⚠️ Vercel's serverless environment may be blocking/throttling external HTTP requests`);
+      }
+      
       throw error;
     }
     

@@ -27,6 +27,10 @@ export async function handleCommentCreated(event: any) {
 
   try {
     const octokit = await installationOctokit(installationId);
+    if (!octokit) {
+      console.error('Failed to create GitHub API client');
+      return;
+    }
 
     // Find the original review by GitHub comment ID
     const originalReview = await prisma.review.findFirst({

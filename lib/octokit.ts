@@ -15,9 +15,19 @@ export function appClient() {
   });
 }
 
-export async function installationOctokit(installationId: number): Promise<Octokit> {
-  const app = appClient();
-  const octokit = await app.getInstallationOctokit(installationId);
-  return octokit as unknown as Octokit;
+export async function installationOctokit(installationId: number): Promise<Octokit | null> {
+  try {
+    console.log(`🔑 Loading GitHub App credentials...`);
+    const app = appClient();
+    console.log(`🔑 Authenticating installation ${installationId}...`);
+    const octokit = await app.getInstallationOctokit(installationId);
+    console.log(`🔑 Installation authenticated successfully`);
+    return octokit as unknown as Octokit;
+  } catch (error: any) {
+    console.error(`❌ Failed to create installation Octokit:`, error.message);
+    console.error(`   Installation ID: ${installationId}`);
+    console.error(`   Error stack:`, error.stack?.substring(0, 300));
+    return null;
+  }
 }
 

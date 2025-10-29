@@ -18,6 +18,14 @@ export async function handlePullRequestOpenedOrSync(event: any) {
   try {
     console.log(`Creating GitHub API client for installation ${installationId}...`);
     const octokit = await installationOctokit(installationId);
+    
+    if (!octokit) {
+      console.error(`❌ Failed to create GitHub API client`);
+      console.error(`   Installation ID: ${installationId}`);
+      console.error(`   Check GITHUB_APP_PRIVATE_KEY or GITHUB_APP_PRIVATE_KEY_B64 is set`);
+      return;
+    }
+    
     console.log(`✅ GitHub API client created successfully`);
 
     // 1. TEMPORARY WORKAROUND: Skip database query entirely

@@ -13,6 +13,15 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   },
 })
 
+// CRITICAL FOR SERVERLESS: Connect immediately on module load
+// This moves the connection delay to initialization, not first query
+if (!globalForPrisma.prisma) {
+  console.log('🔌 Pre-connecting Prisma for serverless...')
+  prisma.$connect()
+    .then(() => console.log('✅ Prisma pre-connected'))
+    .catch((err) => console.error('❌ Prisma pre-connect failed:', err.message))
+}
+
 // IMPORTANT: Your DATABASE_URL must use:
 // - Port 5432 (direct connection) OR
 // - Port 6543 WITHOUT pgbouncer=true (session pooler)

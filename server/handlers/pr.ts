@@ -33,12 +33,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       });
       console.log(`🔍 Step 3: Prisma query promise created`);
       
-      console.log(`🔍 Step 4: Creating timeout promise (3000ms)...`);
+      console.log(`🔍 Step 4: Creating timeout promise (10000ms)...`);
       const timeoutPromise = new Promise<null>((_, reject) => {
         setTimeout(() => {
-          console.log(`⏰ TIMEOUT FIRED after 3000ms!`);
+          console.log(`⏰ TIMEOUT FIRED after 10000ms!`);
           reject(new Error('Database query timeout'));
-        }, 3000);
+        }, 10000);
       });
       console.log(`🔍 Step 5: Timeout promise created`);
       
@@ -97,7 +97,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           },
         }),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Agent query timeout')), 3000)
+          setTimeout(() => reject(new Error('Agent query timeout')), 10000)
         )
       ]);
       bindings = result;

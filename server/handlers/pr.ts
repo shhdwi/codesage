@@ -19,42 +19,43 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Upsert installation and repository
-    console.log(`Upserting installation and repository in database...`);
+    // 1. Upsert installation and repository (optimized approach)
+    console.log(`Checking/creating installation and repository in database...`);
     const startTime = Date.now();
     
-    // Add timeout wrapper
-    const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database operation timed out after 15s')), 15000)
-    );
+    // Find or create installation
+    let installation = await prisma.installation.findUnique({
+      where: { githubId: BigInt(installationId) },
+    });
     
-    const installation = await Promise.race([
-      prisma.installation.upsert({
-        where: { githubId: BigInt(installationId) },
-        update: {},
-        create: {
+    if (!installation) {
+      console.log(`Creating new installation ${installationId}...`);
+      installation = await prisma.installation.create({
+        data: {
           githubId: BigInt(installationId),
           owner: event.repository.owner.login,
           ownerType: event.repository.owner.type,
         },
-      }),
-      timeout
-    ]) as any;
-    console.log(`Installation upserted in ${Date.now() - startTime}ms`);
+      });
+    }
+    console.log(`Installation ready in ${Date.now() - startTime}ms`);
 
-    const repository = await Promise.race([
-      prisma.repository.upsert({
-        where: { fullName: repoFullName },
-        update: {},
-        create: {
+    // Find or create repository
+    let repository = await prisma.repository.findUnique({
+      where: { fullName: repoFullName },
+    });
+    
+    if (!repository) {
+      console.log(`Creating new repository ${repoFullName}...`);
+      repository = await prisma.repository.create({
+        data: {
           fullName: repoFullName,
           installationId: installation.id,
           defaultBranch: event.repository.default_branch,
         },
-      }),
-      timeout
-    ]) as any;
-    console.log(`✅ Database records updated in ${Date.now() - startTime}ms`);
+      });
+    }
+    console.log(`✅ Database records ready in ${Date.now() - startTime}ms`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);

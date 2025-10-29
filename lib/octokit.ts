@@ -31,6 +31,12 @@ export async function installationOctokit(installationId: number) {
       throw new Error('GitHub App private key not configured');
     }
 
+    console.log(`🔑 Private key length: ${privateKey.length} chars`);
+    console.log(`🔑 Private key starts with: ${privateKey.substring(0, 50)}...`);
+    console.log(`🔑 Private key ends with: ...${privateKey.substring(privateKey.length - 50)}`);
+    console.log(`🔑 Contains newlines: ${privateKey.includes('\n')}`);
+    console.log(`🔑 App ID: ${process.env.GITHUB_APP_ID}`);
+
     console.log(`🔑 Authenticating installation ${installationId}...`);
     
     const octokit = new MyOctokit({

@@ -39,7 +39,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     console.log(`🔍 Installation owner: ${event.installation?.account?.login || owner}`);
     console.log(`🔍 Installation ownerType: ${event.installation?.account?.type || 'User'}`);
     
-    let installation;
+    let installation: any;
     try {
       const startTime = Date.now();
       console.log(`🔍 Step 1a: Calling prisma.installation.upsert...`);
@@ -68,7 +68,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     console.log(`🔍 Step 2: About to upsert repository (fullName: ${repoFullName})`);
     
-    let repository;
+    let repository: any;
     try {
       const startTime = Date.now();
       console.log(`🔍 Step 2a: Calling prisma.repository.upsert...`);

@@ -20,71 +20,23 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Upsert installation and repository (use Prisma - more reliable)
-    console.log(`Checking/creating installation and repository in database...`);
+    // 1. Skip database upsert for now (can be async/background)
+    console.log(`Skipping installation/repository upsert to avoid connection issues...`);
     const startTime = Date.now();
     
-    let repository: { id: string; fullName: string };
+    // For now, just query what we need for the review
+    // The installation/repo records already exist from initial setup
+    const repository = await prisma.repository.findUnique({
+      where: { fullName: repoFullName },
+    });
     
-    try {
-      // Use Prisma with timeout protection
-      const dbTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database query timeout after 10s')), 10000)
-      );
-      
-      const installationQuery = Promise.race([
-        prisma.installation.findUnique({
-          where: { githubId: BigInt(installationId) },
-        }),
-        dbTimeout
-      ]) as Promise<any>;
-      
-      let installation = await installationQuery;
-      
-      if (!installation) {
-        console.log(`Creating new installation ${installationId}...`);
-        installation = await Promise.race([
-          prisma.installation.create({
-            data: {
-              githubId: BigInt(installationId),
-              owner: event.repository.owner.login,
-              ownerType: event.repository.owner.type,
-            },
-          }),
-          dbTimeout
-        ]);
-      }
-      console.log(`Installation ready in ${Date.now() - startTime}ms`);
-      
-      const repoQuery = Promise.race([
-        prisma.repository.findUnique({
-          where: { fullName: repoFullName },
-        }),
-        dbTimeout
-      ]) as Promise<any>;
-      
-      let repo_db = await repoQuery;
-      
-      if (!repo_db) {
-        console.log(`Creating new repository ${repoFullName}...`);
-        repo_db = await Promise.race([
-          prisma.repository.create({
-            data: {
-              fullName: repoFullName,
-              installationId: installation.id,
-              defaultBranch: event.repository.default_branch,
-            },
-          }),
-          dbTimeout
-        ]);
-      }
-      
-      repository = { id: repo_db.id, fullName: repo_db.fullName };
-      console.log(`✅ Database records ready in ${Date.now() - startTime}ms`);
-    } catch (error: any) {
-      console.error(`❌ Database operation failed:`, error.message);
-      throw error;
+    if (!repository) {
+      console.error(`❌ Repository ${repoFullName} not found in database`);
+      console.log(`💡 Please add the repository via the dashboard first`);
+      return;
     }
+    
+    console.log(`✅ Repository found (${repository.id}) in ${Date.now() - startTime}ms`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);

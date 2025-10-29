@@ -27,8 +27,15 @@ export function getSupabase() {
 
 // Helper: Find repository by full name
 export async function findRepositoryByName(fullName: string) {
+  console.log(`🔍 Supabase: Querying Repository table for fullName="${fullName}"`);
   const supabase = getSupabase();
-  if (!supabase) return null;
+  if (!supabase) {
+    console.error('❌ Supabase client not available');
+    return null;
+  }
+  
+  console.log(`🔍 Supabase: Executing query...`);
+  const startTime = Date.now();
   
   const { data, error } = await supabase
     .from('Repository')
@@ -36,18 +43,35 @@ export async function findRepositoryByName(fullName: string) {
     .eq('fullName', fullName)
     .single();
   
+  const elapsed = Date.now() - startTime;
+  console.log(`🔍 Supabase: Query completed in ${elapsed}ms`);
+  
   if (error) {
-    console.error('❌ Supabase query error:', error.message);
+    console.error(`❌ Supabase query error (${error.code}):`, error.message);
+    console.error(`   Error details:`, JSON.stringify(error, null, 2));
     return null;
   }
   
-  return data;
+  if (!data) {
+    console.log(`⚠️ Supabase: No repository found with fullName="${fullName}"`);
+    return null;
+  }
+  
+  console.log(`✅ Supabase: Found repository:`, data);
+  return data as { id: string; fullName: string };
 }
 
 // Helper: Find agent bindings for a repo
 export async function findAgentBindingsForRepo(repoId: string) {
+  console.log(`🔍 Supabase: Querying AgentRepositoryBinding for repoId="${repoId}"`);
   const supabase = getSupabase();
-  if (!supabase) return [];
+  if (!supabase) {
+    console.error('❌ Supabase client not available');
+    return [];
+  }
+  
+  console.log(`🔍 Supabase: Executing agent bindings query...`);
+  const startTime = Date.now();
   
   const { data, error } = await supabase
     .from('AgentRepositoryBinding')
@@ -69,11 +93,16 @@ export async function findAgentBindingsForRepo(repoId: string) {
     .eq('enabled', true)
     .eq('agent.enabled', true);
   
+  const elapsed = Date.now() - startTime;
+  console.log(`🔍 Supabase: Agent query completed in ${elapsed}ms`);
+  
   if (error) {
-    console.error('❌ Supabase query error:', error.message);
+    console.error(`❌ Supabase agent query error (${error.code}):`, error.message);
+    console.error(`   Error details:`, JSON.stringify(error, null, 2));
     return [];
   }
   
+  console.log(`✅ Supabase: Found ${data?.length || 0} agent bindings`);
   return data || [];
 }
 

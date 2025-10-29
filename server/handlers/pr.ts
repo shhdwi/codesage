@@ -1,5 +1,6 @@
 import { installationOctokit } from "@/lib/octokit";
 import { prisma } from "@/lib/prisma";
+import { getSupabase } from "@/lib/supabase";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
 import { runGeneration, runEvaluation } from "@/server/llm";
 import { trackTokenUsage } from "@/server/cost-tracker";
@@ -19,43 +20,102 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Upsert installation and repository (optimized approach)
+    // 1. Upsert installation and repository (using Supabase for speed)
     console.log(`Checking/creating installation and repository in database...`);
     const startTime = Date.now();
     
-    // Find or create installation
-    let installation = await prisma.installation.findUnique({
-      where: { githubId: BigInt(installationId) },
-    });
+    const supabase = getSupabase();
     
-    if (!installation) {
-      console.log(`Creating new installation ${installationId}...`);
-      installation = await prisma.installation.create({
-        data: {
-          githubId: BigInt(installationId),
-          owner: event.repository.owner.login,
-          ownerType: event.repository.owner.type,
-        },
+    if (!supabase) {
+      console.warn('⚠️ Supabase client not available, falling back to Prisma');
+      // Fallback to Prisma if Supabase not configured
+      let installation = await prisma.installation.findUnique({
+        where: { githubId: BigInt(installationId) },
       });
-    }
-    console.log(`Installation ready in ${Date.now() - startTime}ms`);
+      
+      if (!installation) {
+        installation = await prisma.installation.create({
+          data: {
+            githubId: BigInt(installationId),
+            owner: event.repository.owner.login,
+            ownerType: event.repository.owner.type,
+          },
+        });
+      }
+      
+      let repository = await prisma.repository.findUnique({
+        where: { fullName: repoFullName },
+      });
+      
+      if (!repository) {
+        repository = await prisma.repository.create({
+          data: {
+            fullName: repoFullName,
+            installationId: installation.id,
+            defaultBranch: event.repository.default_branch,
+          },
+        });
+      }
+      
+      console.log(`✅ Database records ready (Prisma) in ${Date.now() - startTime}ms`);
+    } else {
+      // Use Supabase for much faster operations
+      const { data: existingInstallation } = await supabase
+        .from('Installation')
+        .select('id')
+        .eq('github_id', installationId.toString())
+        .single();
+      
+      let installationId_db: string;
+      
+      if (!existingInstallation) {
+        console.log(`Creating new installation ${installationId}...`);
+        const { data, error } = await supabase
+          .from('Installation')
+          .insert({
+            github_id: installationId.toString(),
+            owner: event.repository.owner.login,
+            owner_type: event.repository.owner.type,
+          })
+          .select('id')
+          .single();
+        
+        if (error) throw new Error(`Failed to create installation: ${error.message}`);
+        installationId_db = data.id;
+      } else {
+        installationId_db = existingInstallation.id;
+      }
+      console.log(`Installation ready in ${Date.now() - startTime}ms`);
 
-    // Find or create repository
-    let repository = await prisma.repository.findUnique({
-      where: { fullName: repoFullName },
-    });
-    
-    if (!repository) {
-      console.log(`Creating new repository ${repoFullName}...`);
-      repository = await prisma.repository.create({
-        data: {
-          fullName: repoFullName,
-          installationId: installation.id,
-          defaultBranch: event.repository.default_branch,
-        },
-      });
+      // Find or create repository
+      const { data: existingRepo } = await supabase
+        .from('Repository')
+        .select('id, full_name')
+        .eq('full_name', repoFullName)
+        .single();
+      
+      let repository: { id: string; fullName: string };
+      
+      if (!existingRepo) {
+        console.log(`Creating new repository ${repoFullName}...`);
+        const { data, error } = await supabase
+          .from('Repository')
+          .insert({
+            full_name: repoFullName,
+            installation_id: installationId_db,
+            default_branch: event.repository.default_branch,
+          })
+          .select('id, full_name')
+          .single();
+        
+        if (error) throw new Error(`Failed to create repository: ${error.message}`);
+        repository = { id: data.id, fullName: data.full_name };
+      } else {
+        repository = { id: existingRepo.id, fullName: existingRepo.full_name };
+      }
+      
+      console.log(`✅ Database records ready (Supabase) in ${Date.now() - startTime}ms`);
     }
-    console.log(`✅ Database records ready in ${Date.now() - startTime}ms`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);

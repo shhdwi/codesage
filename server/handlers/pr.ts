@@ -1,6 +1,6 @@
 import { installationOctokit } from "@/lib/octokit";
 import { prisma } from "@/lib/prisma";
-import { getSupabase } from "@/lib/supabase";
+import { findRepository, findAgentBindings } from "@/lib/db-rest";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
 import { runGeneration, runEvaluation } from "@/server/llm";
 import { trackTokenUsage } from "@/server/cost-tracker";
@@ -20,15 +20,11 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Skip database upsert for now (can be async/background)
-    console.log(`Skipping installation/repository upsert to avoid connection issues...`);
+    // 1. Query repository using REST API (HTTP - no connection pooling issues)
+    console.log(`Finding repository in database via REST...`);
     const startTime = Date.now();
     
-    // For now, just query what we need for the review
-    // The installation/repo records already exist from initial setup
-    const repository = await prisma.repository.findUnique({
-      where: { fullName: repoFullName },
-    });
+    const repository = await findRepository(repoFullName);
     
     if (!repository) {
       console.error(`❌ Repository ${repoFullName} not found in database`);
@@ -49,29 +45,16 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     console.log(`Found ${files.length} changed files`);
 
-    // 3. Load enabled agents bound to this repo
+    // 3. Load enabled agents bound to this repo via REST API
     console.log(`Looking for agent bindings for repo ID: ${repository.id}`);
     
-    const bindings = await prisma.agentRepositoryBinding.findMany({
-      where: {
-        repoId: repository.id,
-        enabled: true,
-        agent: {
-          enabled: true
-        }
-      },
-      include: {
-        agent: true,
-      },
-    });
-
-    console.log(`Found ${bindings.length} agent bindings (enabled: true)`);
+    const bindings = await findAgentBindings(repository.id);
+    const agents = bindings.map((b: any) => b.agent).filter(Boolean);
     
-    const agents = bindings.map(b => b.agent).filter(Boolean);
     console.log(`Found ${agents.length} enabled agents for this repo`);
     
-    if (bindings.length > 0) {
-      console.log('Agent details:', agents.map(a => ({
+    if (agents.length > 0) {
+      console.log('Agent details:', agents.map((a: any) => ({
         id: a.id,
         name: a.name,
         enabled: a.enabled,
@@ -103,7 +86,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       for (const agent of agents) {
         // Check file type filter
         if (agent.fileTypeFilters.length > 0) {
-          const matches = agent.fileTypeFilters.some(filter => 
+          const matches = agent.fileTypeFilters.some((filter: string) => 
             filePath.endsWith(filter) || `.${fileExtension}` === filter
           );
           if (!matches) {

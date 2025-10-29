@@ -70,7 +70,7 @@ export default function SignInPage() {
           <button
             onClick={handleSignIn}
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-gray-900 px-6 py-4 text-base font-semibold text-white shadow-lg hover:bg-gray-800 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-gray-900 px-6 py-4 text-base font-medium text-white shadow-lg hover:bg-gray-800 transition-all duration-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-gray-400/30 focus:ring-offset-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {isLoading ? (
               <>

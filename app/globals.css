@@ -34,7 +34,7 @@ input[type="number"],
 input[type="password"],
 textarea,
 select {
-  @apply block w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10;
+  @apply block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20;
 }
 
 textarea {
@@ -46,22 +46,26 @@ input[type="email"]:hover,
 input[type="number"]:hover,
 textarea:hover,
 select:hover {
-  @apply border-gray-300;
+  @apply border-gray-400;
 }
 
 /* Checkbox Styles */
 input[type="checkbox"] {
-  @apply h-5 w-5 rounded border-2 border-gray-300 text-blue-600 transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0;
+  @apply h-4 w-4 rounded border border-gray-300 text-blue-600 transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0;
 }
 
 /* Label Styles */
 label {
-  @apply text-sm font-semibold text-gray-700;
+  @apply text-sm font-medium text-gray-700;
 }
 
-/* Button Base */
+/* Button Base - Minimal focus ring */
 button {
-  @apply rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-4;
+  @apply rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0;
+}
+
+button:focus-visible {
+  @apply ring-2 ring-blue-500/30;
 }
 
 /* Card Styles */

@@ -144,7 +144,7 @@ export default function ReposPage() {
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="inline-flex items-center gap-2.5 rounded-lg border-2 border-blue-600 bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:border-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2.5 rounded-lg border border-blue-600 bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:border-blue-700 hover:shadow focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -176,7 +176,7 @@ export default function ReposPage() {
             placeholder="      Search repositories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`block w-full rounded-xl border-2 border-gray-200 bg-white py-3.5 pl-14 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 hover:border-gray-300 ${searchQuery ? 'pr-14' : 'pr-4'}`}
+            className={`block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-14 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-gray-400 ${searchQuery ? 'pr-14' : 'pr-4'}`}
           />
           {searchQuery && (
             <button

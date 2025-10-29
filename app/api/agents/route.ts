@@ -14,7 +14,7 @@ const AgentSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-const DEFAULT_AGENTS = [
+const PRESET_AGENTS = [
   {
     name: "General Code Reviewer",
     description: "A comprehensive code reviewer that checks for best practices, potential bugs, and code quality across all file types.",
@@ -47,9 +47,9 @@ const DEFAULT_AGENTS = [
   },
 ];
 
-async function seedDefaultAgents(userId: string) {
+async function seedPresetAgents(userId: string) {
   const agents = await Promise.all(
-    DEFAULT_AGENTS.map((agentData) =>
+    PRESET_AGENTS.map((agentData) =>
       prisma.agent.create({
         data: {
           ...agentData,
@@ -75,10 +75,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Seed default agents for first-time users
+    // Seed preset agents for first-time users
     if (agents.length === 0 && session.user?.id) {
-      console.log(`🌱 Seeding default agents for user ${session.user.id}`);
-      const newAgents = await seedDefaultAgents(session.user.id);
+      console.log(`🌱 Seeding preset agents for user ${session.user.id}`);
+      const newAgents = await seedPresetAgents(session.user.id);
       
       // Fetch the newly created agents with counts
       agents = await prisma.agent.findMany({

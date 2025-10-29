@@ -1,6 +1,5 @@
 import { installationOctokit } from "@/lib/octokit";
 import { prisma } from "@/lib/prisma";
-import { findRepositoryByName, findAgentBindingsForRepo } from "@/lib/supabase";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
 import { runGeneration, runEvaluation } from "@/server/llm";
 import { trackTokenUsage } from "@/server/cost-tracker";
@@ -28,34 +27,42 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. TEMPORARY WORKAROUND: Skip database query entirely
-    // Database queries (both Prisma and Supabase) hang indefinitely from Vercel
-    // Use environment variable to hardcode repo/agent info until we migrate Supabase to US East
-    console.log(`⚠️ Using hardcoded repository fallback to bypass database hang`);
-    
-    const repository: { id: string; fullName: string } = {
-      id: process.env.FALLBACK_REPO_ID || 'cmhbjq4j50000upuv4rhcdm34',
-      fullName: repoFullName,
-    };
-    
-    console.log(`✅ Repository: ${repository.fullName} (id: ${repository.id})`);
-    
-    // Load agents from environment variable as JSON
-    // Format: [{"id":"...","name":"...","enabled":true,"generationPrompt":"...","evaluationPrompt":"...","evaluationDims":[],"severityThreshold":5,"fileTypeFilters":[]}]
-    const agentsJson = process.env.FALLBACK_AGENTS || '[]';
-    let agents: any[] = [];
-    try {
-      agents = JSON.parse(agentsJson);
-      console.log(`✅ Loaded ${agents.length} agents from FALLBACK_AGENTS`);
-    } catch (error: any) {
-      console.error(`❌ Failed to parse FALLBACK_AGENTS:`, error.message);
-    }
-    
+    // 1. Find or create installation and repository
+    const installation = await prisma.installation.upsert({
+      where: { githubId: installationId },
+      create: {
+        githubId: installationId,
+        owner: event.installation.account.login,
+        ownerType: event.installation.account.type,
+      },
+      update: {},
+    });
+
+    const repository = await prisma.repository.upsert({
+      where: { fullName: repoFullName },
+      create: {
+        fullName: repoFullName,
+        installationId: installation.id,
+      },
+      update: {},
+    });
+
+    // Get all agents bound to this repository
+    const bindings = await prisma.agentRepositoryBinding.findMany({
+      where: { repoId: repository.id },
+      include: { agent: true },
+    });
+
+    const agents = bindings
+      .filter((b) => b.agent.enabled)
+      .map((b) => b.agent);
+
     if (agents.length === 0) {
-      console.log("❌ No agents configured (FALLBACK_AGENTS is empty)");
-      console.log("💡 Set FALLBACK_AGENTS env var with your agent config JSON");
+      console.log("No agents configured for this repository");
       return;
     }
+
+    console.log(`Found ${agents.length} active agents for ${repoFullName}`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);

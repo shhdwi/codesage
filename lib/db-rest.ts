@@ -57,7 +57,16 @@ async function supabaseREST(table: string, options: RestOptions) {
   console.log(`🌐 HTTP ${options.method} ${url}`);
   
   try {
-    const response = await fetch(url, fetchOptions);
+    // Add timeout to prevent indefinite hangs
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(url, {
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       const error = await response.text();
@@ -71,6 +80,10 @@ async function supabaseREST(table: string, options: RestOptions) {
     
     return null;
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('❌ Supabase REST call timed out after 5 seconds');
+      throw new Error('Database request timeout - check your DATABASE_URL connection string');
+    }
     console.error('❌ Supabase REST call failed:', error.message);
     throw error;
   }

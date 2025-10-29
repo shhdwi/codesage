@@ -1,6 +1,5 @@
 import { installationOctokit } from "@/lib/octokit";
 import { prisma } from "@/lib/prisma";
-import { findRepository, findAgentBindings } from "@/lib/db-rest";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
 import { runGeneration, runEvaluation } from "@/server/llm";
 import { trackTokenUsage } from "@/server/cost-tracker";
@@ -20,11 +19,14 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Query repository using REST API (HTTP - no connection pooling issues)
-    console.log(`Finding repository in database via REST...`);
+    // 1. Query repository (will work once DATABASE_URL is fixed)
+    console.log(`Finding repository in database...`);
     const startTime = Date.now();
     
-    const repository = await findRepository(repoFullName);
+    const repository = await prisma.repository.findUnique({
+      where: { fullName: repoFullName },
+      select: { id: true, fullName: true },
+    });
     
     if (!repository) {
       console.error(`❌ Repository ${repoFullName} not found in database`);
@@ -45,16 +47,29 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     console.log(`Found ${files.length} changed files`);
 
-    // 3. Load enabled agents bound to this repo via REST API
+    // 3. Load enabled agents bound to this repo
     console.log(`Looking for agent bindings for repo ID: ${repository.id}`);
     
-    const bindings = await findAgentBindings(repository.id);
-    const agents = bindings.map((b: any) => b.agent).filter(Boolean);
+    const bindings = await prisma.agentRepositoryBinding.findMany({
+      where: {
+        repoId: repository.id,
+        enabled: true,
+        agent: {
+          enabled: true
+        }
+      },
+      include: {
+        agent: true,
+      },
+    });
+
+    console.log(`Found ${bindings.length} agent bindings (enabled: true)`);
     
+    const agents = bindings.map(b => b.agent).filter(Boolean);
     console.log(`Found ${agents.length} enabled agents for this repo`);
     
     if (agents.length > 0) {
-      console.log('Agent details:', agents.map((a: any) => ({
+      console.log('Agent details:', agents.map(a => ({
         id: a.id,
         name: a.name,
         enabled: a.enabled,

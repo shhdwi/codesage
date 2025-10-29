@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { useState } from "react";
 
 const AgentSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -53,9 +52,6 @@ Review Comment:
 Rate the review on a scale of 1-10 for each dimension and provide a brief summary.`;
 
 export function AgentForm({ onSubmit, initialData, saving }: AgentFormProps) {
-  const [testResult, setTestResult] = useState<any>(null);
-  const [testing, setTesting] = useState(false);
-
   const {
     register,
     handleSubmit,
@@ -81,42 +77,6 @@ export function AgentForm({ onSubmit, initialData, saving }: AgentFormProps) {
       evaluationDims: data.evaluationDims.split(",").map(s => s.trim()).filter(Boolean),
       fileTypeFilters: data.fileTypeFilters.split(",").map(s => s.trim()).filter(Boolean),
     };
-  };
-
-  const handleTest = async () => {
-    setTesting(true);
-    setTestResult(null);
-
-    const formData = watch();
-    const processedData = processFormData(formData);
-
-    try {
-      const response = await fetch(`/api/agents/${initialData?.id || 'test'}/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          codeChunk: `function calculateTotal(items) {
-  let total = 0;
-  for (let i = 0; i <= items.length; i++) {
-    total += items[i].price;
-  }
-  return total;
-}`,
-          filePath: "test.js",
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setTestResult(result);
-      } else {
-        setTestResult({ error: "Failed to test prompt" });
-      }
-    } catch (error) {
-      setTestResult({ error: "Failed to test prompt" });
-    } finally {
-      setTesting(false);
-    }
   };
 
   return (
@@ -301,89 +261,6 @@ export function AgentForm({ onSubmit, initialData, saving }: AgentFormProps) {
             Enable this agent for code reviews
           </label>
         </div>
-      </div>
-
-      {/* Test Section */}
-      <div className="space-y-4 border-t-2 border-gray-200 pt-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Test Your Configuration</h3>
-            <p className="mt-1 text-sm text-gray-500">Validate prompts with sample code</p>
-          </div>
-          <Button
-            type="button"
-            onClick={handleTest}
-            disabled={testing}
-            variant="secondary"
-            className="px-6 py-2.5"
-          >
-            {testing ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Testing...
-              </span>
-            ) : (
-              "Run Test"
-            )}
-          </Button>
-        </div>
-
-        {testResult && (
-          <div className="rounded-xl border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white p-6 animate-slide-in">
-            {testResult.error ? (
-              <div className="flex items-center gap-3 text-red-600">
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <p className="font-medium">{testResult.error}</p>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Generated Review</span>
-                  </div>
-                  <div className="rounded-lg bg-white border-2 border-gray-200 p-4">
-                    <p className="text-sm leading-relaxed text-gray-900">{testResult.comment}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-700">Severity:</span>
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800">
-                      {testResult.severity}/5
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg className="h-5 w-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Evaluation Scores</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {Object.entries(testResult.evaluation.scores).map(([dim, score]) => (
-                      <div key={dim} className="rounded-lg bg-white border-2 border-gray-200 p-3 text-center">
-                        <div className="text-2xl font-bold text-gray-900">{score as number}</div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase mt-1">{dim}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}

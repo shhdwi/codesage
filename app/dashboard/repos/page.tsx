@@ -173,10 +173,10 @@ export default function ReposPage() {
           </div>
           <input
             type="text"
-            placeholder="Search repositories..."
+            placeholder="      Search repositories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`block w-full rounded-xl border-2 border-gray-200 bg-white py-3.5 pl-12 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 hover:border-gray-300 ${searchQuery ? 'pr-12' : 'pr-4'}`}
+            className={`block w-full rounded-xl border-2 border-gray-200 bg-white py-3.5 pl-14 text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 hover:border-gray-300 ${searchQuery ? 'pr-14' : 'pr-4'}`}
           />
           {searchQuery && (
             <button

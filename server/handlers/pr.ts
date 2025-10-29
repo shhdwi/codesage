@@ -1,5 +1,4 @@
 import { installationOctokit } from "@/lib/octokit";
-import { getInstallationToken } from "@/lib/github-auth";
 import { prisma } from "@/lib/prisma";
 import { findRepositoryByName, findAgentBindingsForRepo } from "@/lib/supabase";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
@@ -28,12 +27,6 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     }
     
     console.log(`✅ GitHub API client created successfully`);
-    
-    // Debug: Check octokit structure
-    console.log(`🔍 Octokit type: ${typeof octokit}`);
-    console.log(`🔍 Octokit keys: ${Object.keys(octokit || {}).join(', ')}`);
-    console.log(`🔍 Has pulls: ${!!octokit?.pulls}`);
-    console.log(`🔍 Has request: ${!!octokit?.request}`);
 
     // 1. TEMPORARY WORKAROUND: Skip database query entirely
     // Database queries (both Prisma and Supabase) hang indefinitely from Vercel
@@ -66,60 +59,14 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
-    
-    let files: any[] = [];
-    try {
-      // Use native fetch() with AbortController for reliable timeout
-      console.log(`🔍 Using fetch() to bypass Octokit hang issue`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log(`⏰ Aborting request after 10s`);
-        controller.abort();
-      }, 10000);
-      
-      // Get installation token using our cached method
-      console.log(`🔑 Getting installation token...`);
-      const token = await getInstallationToken(installationId);
-      console.log(`✅ Got installation token`);
-      
-      const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`;
-      console.log(`🌐 Fetching: ${url}`);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/vnd.github+json',
-          'Authorization': `Bearer ${token}`,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-      }
-      
-      files = await response.json();
-      console.log(`✅ Successfully fetched ${files.length} changed files`);
-    } catch (error: any) {
-      console.error(`❌ Failed to fetch changed files:`, error.message);
-      console.error(`   Error name:`, error.name);
-      
-      if (error.name === 'AbortError') {
-        console.error(`   ⚠️ Request was aborted due to timeout`);
-        console.error(`   ⚠️ This suggests network connectivity issues or GitHub API being slow`);
-      }
-      
-      throw error;
-    }
-    
-    if (files.length === 0) {
-      console.log(`⚠️ No files changed in this PR`);
-      return;
-    }
+    const { data: files } = await octokit.pulls.listFiles({
+      owner,
+      repo,
+      pull_number: prNumber,
+      per_page: 100,
+    });
+
+    console.log(`Found ${files.length} changed files`);
 
     // 3. Process each file with each agent
     for (const file of files) {
@@ -180,52 +127,22 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
           try {
-            console.log(`📝 Posting comment using fetch()...`);
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => {
-              console.log(`⏰ Aborting comment post after 10s`);
-              controller.abort();
-            }, 10000);
-            
-            // Get installation token using our cached method
-            const token = await getInstallationToken(installationId);
-            
-            const commentUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`;
-            const commentBody = {
+            const comment = await octokit.pulls.createReviewComment({
+              owner,
+              repo,
+              pull_number: prNumber,
               body: `**${agent.name}** (Severity: ${generation.severity}/5)\n\n${generation.comment}`,
               commit_id: commitSha,
               path: filePath,
               line: line.newLineNumber,
               side: "RIGHT",
-            };
-            
-            const response = await fetch(commentUrl, {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/vnd.github+json',
-                'Authorization': `Bearer ${token}`,
-                'X-GitHub-Api-Version': '2022-11-28',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(commentBody),
-              signal: controller.signal,
             });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`GitHub API error: ${response.status} ${errorText}`);
-            }
-            
-            const commentData = await response.json();
-            githubCommentId = BigInt(commentData.id);
+            githubCommentId = BigInt(comment.data.id);
             console.log(`✅ Comment posted successfully! GitHub comment ID: ${githubCommentId}`);
           } catch (error: any) {
             console.error(`❌ Failed to post comment:`, error.message);
             console.error(`Error details:`, {
-              name: error.name,
+              status: error.status,
               message: error.message,
               file: filePath,
               line: line.newLineNumber,

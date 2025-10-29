@@ -28,30 +28,89 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     console.log(`✅ GitHub API client created successfully`);
 
     // 1. Find or create installation and repository
-    const installation = await prisma.installation.upsert({
-      where: { githubId: installationId },
-      create: {
-        githubId: installationId,
-        owner: event.installation?.account?.login || owner,
-        ownerType: event.installation?.account?.type || 'User',
-      },
-      update: {},
-    });
+    console.log(`🔍 Step 1: About to upsert installation (githubId: ${installationId})`);
+    console.log(`🔍 Installation owner: ${event.installation?.account?.login || owner}`);
+    console.log(`🔍 Installation ownerType: ${event.installation?.account?.type || 'User'}`);
+    
+    let installation;
+    try {
+      const startTime = Date.now();
+      console.log(`🔍 Step 1a: Calling prisma.installation.upsert...`);
+      
+      installation = await Promise.race([
+        prisma.installation.upsert({
+          where: { githubId: installationId },
+          create: {
+            githubId: installationId,
+            owner: event.installation?.account?.login || owner,
+            ownerType: event.installation?.account?.type || 'User',
+          },
+          update: {},
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Installation upsert timeout after 10s')), 10000)
+        )
+      ]);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Step 1b: Installation upserted successfully in ${elapsed}ms`);
+    } catch (error: any) {
+      console.error(`❌ Step 1c: Installation upsert failed:`, error.message);
+      throw error;
+    }
 
-    const repository = await prisma.repository.upsert({
-      where: { fullName: repoFullName },
-      create: {
-        fullName: repoFullName,
-        installationId: installation.id,
-      },
-      update: {},
-    });
+    console.log(`🔍 Step 2: About to upsert repository (fullName: ${repoFullName})`);
+    
+    let repository;
+    try {
+      const startTime = Date.now();
+      console.log(`🔍 Step 2a: Calling prisma.repository.upsert...`);
+      
+      repository = await Promise.race([
+        prisma.repository.upsert({
+          where: { fullName: repoFullName },
+          create: {
+            fullName: repoFullName,
+            installationId: installation.id,
+          },
+          update: {},
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Repository upsert timeout after 10s')), 10000)
+        )
+      ]);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Step 2b: Repository upserted successfully in ${elapsed}ms`);
+    } catch (error: any) {
+      console.error(`❌ Step 2c: Repository upsert failed:`, error.message);
+      throw error;
+    }
 
     // Get all agents bound to this repository
-    const bindings = await prisma.agentRepositoryBinding.findMany({
-      where: { repoId: repository.id },
-      include: { agent: true },
-    });
+    console.log(`🔍 Step 3: About to fetch agent bindings for repo ${repository.id}`);
+    
+    let bindings;
+    try {
+      const startTime = Date.now();
+      console.log(`🔍 Step 3a: Calling prisma.agentRepositoryBinding.findMany...`);
+      
+      bindings = await Promise.race([
+        prisma.agentRepositoryBinding.findMany({
+          where: { repoId: repository.id },
+          include: { agent: true },
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Agent bindings query timeout after 10s')), 10000)
+        )
+      ]) as any[];
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Step 3b: Fetched ${bindings.length} agent bindings in ${elapsed}ms`);
+    } catch (error: any) {
+      console.error(`❌ Step 3c: Agent bindings query failed:`, error.message);
+      throw error;
+    }
 
     const agents = bindings
       .filter((b) => b.agent.enabled)
@@ -65,13 +124,32 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     console.log(`Found ${agents.length} active agents for ${repoFullName}`);
 
     // 2. Get files changed in PR
-    console.log(`Fetching changed files from PR #${prNumber}...`);
-    const { data: files } = await octokit.pulls.listFiles({
-      owner,
-      repo,
-      pull_number: prNumber,
-      per_page: 100,
-    });
+    console.log(`🔍 Step 4: Fetching changed files from PR #${prNumber}...`);
+    
+    let files;
+    try {
+      const startTime = Date.now();
+      console.log(`🔍 Step 4a: Calling octokit.pulls.listFiles...`);
+      
+      const response = await Promise.race([
+        octokit.pulls.listFiles({
+          owner,
+          repo,
+          pull_number: prNumber,
+          per_page: 100,
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('GitHub listFiles timeout after 15s')), 15000)
+        )
+      ]) as any;
+      
+      files = response.data;
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Step 4b: Fetched ${files.length} changed files in ${elapsed}ms`);
+    } catch (error: any) {
+      console.error(`❌ Step 4c: Failed to fetch changed files:`, error.message);
+      throw error;
+    }
 
     console.log(`Found ${files.length} changed files`);
 

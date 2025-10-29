@@ -13,6 +13,11 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   },
 })
 
+// Set query timeout to 10 seconds
+prisma.$executeRaw`SET statement_timeout = 10000`.catch(() => {
+  // Ignore if already set
+});
+
 // Optimize connection pool
 prisma.$connect().catch((err) => {
   console.error('Failed to connect to database:', err);

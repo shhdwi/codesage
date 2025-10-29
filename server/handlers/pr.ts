@@ -21,26 +21,40 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 1. Upsert installation and repository
     console.log(`Upserting installation and repository in database...`);
-    const installation = await prisma.installation.upsert({
-      where: { githubId: BigInt(installationId) },
-      update: {},
-      create: {
-        githubId: BigInt(installationId),
-        owner: event.repository.owner.login,
-        ownerType: event.repository.owner.type,
-      },
-    });
+    const startTime = Date.now();
+    
+    // Add timeout wrapper
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database operation timed out after 15s')), 15000)
+    );
+    
+    const installation = await Promise.race([
+      prisma.installation.upsert({
+        where: { githubId: BigInt(installationId) },
+        update: {},
+        create: {
+          githubId: BigInt(installationId),
+          owner: event.repository.owner.login,
+          ownerType: event.repository.owner.type,
+        },
+      }),
+      timeout
+    ]) as any;
+    console.log(`Installation upserted in ${Date.now() - startTime}ms`);
 
-    const repository = await prisma.repository.upsert({
-      where: { fullName: repoFullName },
-      update: {},
-      create: {
-        fullName: repoFullName,
-        installationId: installation.id,
-        defaultBranch: event.repository.default_branch,
-      },
-    });
-    console.log(`✅ Database records updated`);
+    const repository = await Promise.race([
+      prisma.repository.upsert({
+        where: { fullName: repoFullName },
+        update: {},
+        create: {
+          fullName: repoFullName,
+          installationId: installation.id,
+          defaultBranch: event.repository.default_branch,
+        },
+      }),
+      timeout
+    ]) as any;
+    console.log(`✅ Database records updated in ${Date.now() - startTime}ms`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);

@@ -47,8 +47,14 @@ export async function GET(req: NextRequest) {
       prisma.review.count({ where }),
     ]);
 
+    // Convert BigInt fields to strings for JSON serialization
+    const serializedReviews = reviews.map(review => ({
+      ...review,
+      githubCommentId: review.githubCommentId ? review.githubCommentId.toString() : null,
+    }));
+
     return NextResponse.json({
-      reviews,
+      reviews: serializedReviews,
       pagination: {
         page,
         limit,

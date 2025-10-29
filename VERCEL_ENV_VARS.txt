@@ -1,0 +1,19 @@
+# ============================================
+# ADD THESE TO VERCEL ENVIRONMENT VARIABLES
+# ============================================
+
+# 1. Repository ID (already in your DB)
+FALLBACK_REPO_ID=cmhbjq4j50000upuv4rhcdm34
+
+# 2. Agent Configuration (your "Code Quality Guardian" agent)
+FALLBACK_AGENTS=[{"id":"cmhb1fsw90001k104vwfj6z24","name":"Code Quality Guardian","enabled":true,"generationPrompt":"You are a code quality specialist focused on maintainability. Review this {file_type} code from {file_path}:\n\n{code_chunk}\n\nLook for:\n1. **Naming**: Unclear variable/function names\n2. **Complexity**: Functions doing too many things (SRP violation)\n3. **Duplication**: Copy-pasted code that should be refactored\n4. **Magic Numbers**: Hardcoded values without explanation\n5. **Error Handling**: Missing try-catch, no error messages\n6. **Comments**: Missing documentation for complex logic\n7. **Code Smells**: Long parameter lists, deep nesting, god classes\n\nFor each issue:\n- Explain why it hurts maintainability\n- Show a cleaner alternative\n- Keep tone constructive and educational\n\nFocus on significant quality issues, not style nitpicks.","evaluationPrompt":"Evaluate this code quality review:\n\nCode:\n{code_chunk}\n\nReview:\n{review_comment}\n\nRate 1-10:\n1. **Relevance**: Is this a real maintainability issue?\n2. **Accuracy**: Is the assessment correct?\n3. **Actionability**: Is the suggested improvement clear?\n4. **Tone**: Is it constructive and helpful?\n\nProvide scores.","evaluationDims":["relevance","accuracy","actionability","clarity"],"severityThreshold":1,"fileTypeFilters":[]}]
+
+# ============================================
+# HOW TO ADD TO VERCEL:
+# ============================================
+# 1. Go to: https://vercel.com/dashboard → Your Project → Settings → Environment Variables
+# 2. Click "Add New"
+# 3. Copy/paste the variable name and value
+# 4. Apply to: Production (and Preview if you want)
+# 5. Save
+# 6. Redeploy (automatic after git push, or manual redeploy)

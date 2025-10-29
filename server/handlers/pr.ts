@@ -65,7 +65,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       const { data: existingInstallation } = await supabase
         .from('Installation')
         .select('id')
-        .eq('github_id', installationId.toString())
+        .eq('githubId', installationId) // Use camelCase!
         .maybeSingle() as any;
       
       let installationId_db: string;
@@ -75,9 +75,9 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         const { data, error } = await supabase
           .from('Installation')
           .insert({
-            github_id: installationId.toString(),
+            githubId: installationId, // Use camelCase and bigint!
             owner: event.repository.owner.login,
-            owner_type: event.repository.owner.type,
+            ownerType: event.repository.owner.type,
           } as any)
           .select('id')
           .maybeSingle() as any;
@@ -92,8 +92,8 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       // Find or create repository
       const { data: existingRepo } = await supabase
         .from('Repository')
-        .select('id, full_name')
-        .eq('full_name', repoFullName)
+        .select('id, fullName') // Use camelCase!
+        .eq('fullName', repoFullName) // Use camelCase!
         .maybeSingle() as any;
       
       if (!existingRepo) {
@@ -101,17 +101,17 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         const { data, error } = await supabase
           .from('Repository')
           .insert({
-            full_name: repoFullName,
-            installation_id: installationId_db,
-            default_branch: event.repository.default_branch,
+            fullName: repoFullName, // Use camelCase!
+            installationId: installationId_db, // Use camelCase!
+            defaultBranch: event.repository.default_branch, // Use camelCase!
           } as any)
-          .select('id, full_name')
+          .select('id, fullName') // Use camelCase!
           .maybeSingle() as any;
         
         if (error) throw new Error(`Failed to create repository: ${error.message}`);
-        repository = { id: data?.id || '', fullName: data?.full_name || repoFullName };
+        repository = { id: data?.id || '', fullName: data?.fullName || repoFullName };
       } else {
-        repository = { id: existingRepo.id, fullName: existingRepo.full_name };
+        repository = { id: existingRepo.id, fullName: existingRepo.fullName };
       }
       
       console.log(`✅ Database records ready (Supabase) in ${Date.now() - startTime}ms`);

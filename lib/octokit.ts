@@ -35,11 +35,24 @@ export function appClient() {
 
 export async function installationOctokit(installationId: number): Promise<any> {
   try {
-    console.log(`🔑 Loading GitHub App credentials...`);
+    console.log(`🔑 [${Date.now()}] Loading GitHub App credentials...`);
     const app = appClient();
-    console.log(`🔑 Authenticating installation ${installationId}...`);
-    const octokit = await app.getInstallationOctokit(installationId);
-    console.log(`🔑 Installation authenticated successfully`);
+    console.log(`🔑 [${Date.now()}] Authenticating installation ${installationId}...`);
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => {
+        console.log(`⏰ [${Date.now()}] Installation auth timeout after 10s`);
+        reject(new Error('Installation authentication timeout'));
+      }, 10000)
+    );
+    
+    const authPromise = app.getInstallationOctokit(installationId);
+    
+    console.log(`🔑 [${Date.now()}] Starting auth race...`);
+    const octokit = await Promise.race([authPromise, timeoutPromise]) as any;
+    console.log(`🔑 [${Date.now()}] Installation authenticated successfully`);
+    
     // Return the octokit directly - it has the correct type
     return octokit;
   } catch (error: any) {

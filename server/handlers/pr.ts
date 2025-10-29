@@ -65,25 +65,38 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
+    console.log(`🔍 Step A: About to call octokit.request()`);
     
     let files: any[] = [];
     try {
       // Use request() method directly - @octokit/app doesn't have .pulls
-      console.log(`🔍 Making request to GitHub API: GET /repos/${owner}/${repo}/pulls/${prNumber}/files`);
+      console.log(`🔍 Step B: Making request to GitHub API: GET /repos/${owner}/${repo}/pulls/${prNumber}/files`);
       
       // Add timeout to prevent indefinite hang
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('GitHub API request timeout after 10s')), 10000)
+        setTimeout(() => {
+          console.log(`⏰ Timeout triggered after 10s`);
+          reject(new Error('GitHub API request timeout after 10s'));
+        }, 10000)
       );
+      
+      console.log(`🔍 Step C: Created timeout promise`);
       
       const requestPromise = octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
         owner,
         repo,
         pull_number: prNumber,
         per_page: 100,
+      }).then((response: any) => {
+        console.log(`✅ Step D: Request completed successfully`);
+        return response;
       });
       
+      console.log(`🔍 Step E: Created request promise, starting race...`);
+      
       const filesResponse = await Promise.race([requestPromise, timeoutPromise]) as any;
+      
+      console.log(`🔍 Step F: Race completed`);
       
       files = filesResponse.data;
       console.log(`✅ Successfully fetched ${files.length} changed files`);

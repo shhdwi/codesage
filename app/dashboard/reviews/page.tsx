@@ -57,12 +57,27 @@ export default function ReviewsPage() {
   };
 
   const submitFeedback = async (reviewId: string, rating: number) => {
-    await fetch(`/api/reviews/${reviewId}/feedback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rating }),
-    });
-    fetchReviews();
+    // Optimistic UI update - instant feedback!
+    setReviews(prevReviews => 
+      prevReviews.map(review => 
+        review.id === reviewId 
+          ? { ...review, feedbacks: [...review.feedbacks, { rating }] }
+          : review
+      )
+    );
+
+    // Background API call
+    try {
+      await fetch(`/api/reviews/${reviewId}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating }),
+      });
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      // Revert on error by refetching
+      fetchReviews();
+    }
   };
 
   const calculateAvgScore = (evaluations: Array<{ scores: Record<string, number> }>) => {

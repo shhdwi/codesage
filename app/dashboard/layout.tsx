@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/get-session";
 import Link from "next/link";
 import { signOut } from "@/lib/auth";
+import Image from "next/image";
 
 export default async function DashboardLayout({
   children,
@@ -15,11 +16,18 @@ export default async function DashboardLayout({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between items-center">
             <div className="flex items-center gap-10">
-              <div className="flex items-center">
+              <Link href="/dashboard" className="flex items-center gap-3 group">
+                <Image
+                  src="/logo.png"
+                  alt="CodeSage Logo"
+                  width={32}
+                  height={32}
+                  className="transition-transform duration-200 group-hover:scale-110"
+                />
                 <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">
                   CodeSage
                 </h1>
-              </div>
+              </Link>
               <div className="flex space-x-8">
                 <Link
                   href="/dashboard"

@@ -15,9 +15,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
   console.log(`Processing PR #${prNumber} in ${repoFullName}`);
 
   try {
+    console.log(`Creating GitHub API client for installation ${installationId}...`);
     const octokit = await installationOctokit(installationId);
+    console.log(`✅ GitHub API client created successfully`);
 
     // 1. Upsert installation and repository
+    console.log(`Upserting installation and repository in database...`);
     const installation = await prisma.installation.upsert({
       where: { githubId: BigInt(installationId) },
       update: {},
@@ -37,8 +40,10 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         defaultBranch: event.repository.default_branch,
       },
     });
+    console.log(`✅ Database records updated`);
 
     // 2. Get files changed in PR
+    console.log(`Fetching changed files from PR #${prNumber}...`);
     const { data: files } = await octokit.pulls.listFiles({
       owner,
       repo,
@@ -215,8 +220,14 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     }
 
     console.log(`Finished processing PR #${prNumber}`);
-  } catch (error) {
-    console.error("Error processing PR:", error);
+  } catch (error: any) {
+    console.error("❌ Error processing PR:", error);
+    console.error("Error details:", {
+      message: error.message,
+      status: error.status,
+      name: error.name,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n'),
+    });
     throw error;
   }
 }

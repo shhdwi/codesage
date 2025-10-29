@@ -70,7 +70,7 @@ export async function handleCommentCreated(event: any) {
     try {
       // For pull request review comments
       if (event.comment.pull_request_review_id) {
-        const reply = await octokit.pulls.createReplyForReviewComment({
+        const reply = await octokit.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies', {
           owner,
           repo,
           pull_number: originalReview.prNumber,
@@ -80,7 +80,7 @@ export async function handleCommentCreated(event: any) {
         githubReplyId = BigInt(reply.data.id);
       } else {
         // For regular issue comments
-        const reply = await octokit.issues.createComment({
+        const reply = await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/comments', {
           owner,
           repo,
           issue_number: originalReview.prNumber,

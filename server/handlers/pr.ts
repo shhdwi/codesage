@@ -65,13 +65,16 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
-    const { data: files } = await octokit.pulls.listFiles({
+    
+    // Use request() method directly - @octokit/app doesn't have .pulls
+    const filesResponse = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
       owner,
       repo,
       pull_number: prNumber,
       per_page: 100,
     });
-
+    
+    const files = filesResponse.data;
     console.log(`Found ${files.length} changed files`);
 
     // 3. Process each file with each agent
@@ -133,7 +136,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
           try {
-            const comment = await octokit.pulls.createReviewComment({
+            const comment = await octokit.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/comments', {
               owner,
               repo,
               pull_number: prNumber,

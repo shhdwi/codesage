@@ -18,7 +18,7 @@ export async function GET() {
         agent: {
           select: { name: true, userId: true }
         },
-        repository: {
+        repo: {
           select: { fullName: true }
         }
       },
@@ -34,7 +34,7 @@ export async function GET() {
       reviews: reviews.map(r => ({
         id: r.id,
         agent: r.agent.name,
-        repo: r.repository.fullName,
+        repo: r.repo.fullName,
         pr: `#${r.prNumber}`,
         file: r.filePath,
         line: r.lineNumber,

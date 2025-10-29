@@ -60,7 +60,7 @@ export async function GET() {
         agent: {
           select: { name: true }
         },
-        repository: {
+        repo: {
           select: { fullName: true }
         }
       }
@@ -96,7 +96,7 @@ export async function GET() {
       recentActivity: recentReviews.map(review => ({
         id: review.id,
         agent: review.agent.name,
-        repo: review.repository.fullName,
+        repo: review.repo.fullName,
         prNumber: review.prNumber,
         filePath: review.filePath,
         severity: review.severity,

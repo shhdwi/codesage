@@ -1,5 +1,6 @@
 import { installationOctokit } from "@/lib/octokit";
 import { prisma } from "@/lib/prisma";
+import { findRepositoryByName, findAgentBindingsForRepo } from "@/lib/supabase";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
 import { runGeneration, runEvaluation } from "@/server/llm";
 import { trackTokenUsage } from "@/server/cost-tracker";
@@ -19,53 +20,20 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Query repository with aggressive timeout and verbose logging
-    console.log(`Finding repository in database...`);
-    console.log(`🔍 Step 1: About to create Promise.race with 3s timeout`);
+    // 1. Query repository using Supabase JS (HTTP - fast and reliable)
+    console.log(`Finding repository in database via Supabase...`);
     const startTime = Date.now();
     
-    let repository: { id: string; fullName: string } | null = null;
-    try {
-      console.log(`🔍 Step 2: Creating Prisma query promise...`);
-      const prismaQuery = prisma.repository.findUnique({
-        where: { fullName: repoFullName },
-        select: { id: true, fullName: true },
-      });
-      console.log(`🔍 Step 3: Prisma query promise created`);
-      
-      console.log(`🔍 Step 4: Creating timeout promise (10000ms)...`);
-      const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => {
-          console.log(`⏰ TIMEOUT FIRED after 10000ms!`);
-          reject(new Error('Database query timeout'));
-        }, 10000);
-      });
-      console.log(`🔍 Step 5: Timeout promise created`);
-      
-      console.log(`🔍 Step 6: Starting Promise.race...`);
-      const result = await Promise.race([prismaQuery, timeoutPromise]);
-      console.log(`🔍 Step 7: Promise.race resolved! Elapsed: ${Date.now() - startTime}ms`);
-      
-      repository = result;
-      
-      if (!repository) {
-        console.error(`❌ Repository ${repoFullName} not found in database`);
-        console.log(`💡 Please add the repository via the dashboard first`);
-        return;
-      }
-      
-      console.log(`✅ Repository found (${repository.id}) in ${Date.now() - startTime}ms`);
-    } catch (error: any) {
-      const elapsed = Date.now() - startTime;
-      console.error(`❌ Database query failed after ${elapsed}ms:`, error.message);
-      console.log(`🔍 Diagnostic info:`);
-      console.log(`   - DATABASE_URL configured: ${!!process.env.DATABASE_URL}`);
-      console.log(`   - Connection string starts with: ${process.env.DATABASE_URL?.substring(0, 50)}...`);
-      console.log(`   - Repository: ${repoFullName}`);
-      console.log(`   - Error name: ${error.name}`);
-      console.log(`   - Error stack: ${error.stack?.substring(0, 200)}`);
-      throw new Error(`Database timeout - check Supabase region latency or use connection pooler`);
+    const repositoryResult = await findRepositoryByName(repoFullName);
+    
+    if (!repositoryResult) {
+      console.error(`❌ Repository ${repoFullName} not found in database`);
+      console.log(`💡 Please add the repository via the dashboard first`);
+      return;
     }
+    
+    const repository: { id: string; fullName: string } = repositoryResult;
+    console.log(`✅ Repository found (${repository.id}) in ${Date.now() - startTime}ms`);
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
@@ -78,41 +46,16 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     console.log(`Found ${files.length} changed files`);
 
-    // 3. Load enabled agents bound to this repo (with timeout)
+    // 3. Load enabled agents via Supabase (HTTP - fast)
     console.log(`Looking for agent bindings for repo ID: ${repository.id}`);
     
-    let bindings: any[];
-    try {
-      const result = await Promise.race([
-        prisma.agentRepositoryBinding.findMany({
-          where: {
-            repoId: repository.id,
-            enabled: true,
-            agent: {
-              enabled: true
-            }
-          },
-          include: {
-            agent: true,
-          },
-        }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Agent query timeout')), 10000)
-        )
-      ]);
-      bindings = result;
-    } catch (error: any) {
-      console.error(`❌ Failed to load agent bindings:`, error.message);
-      throw error;
-    }
-
-    console.log(`Found ${bindings.length} agent bindings (enabled: true)`);
+    const bindings = await findAgentBindingsForRepo(repository.id);
+    const agents = bindings.map((b: any) => b.agent).filter(Boolean);
     
-    const agents = bindings.map(b => b.agent).filter(Boolean);
     console.log(`Found ${agents.length} enabled agents for this repo`);
     
     if (agents.length > 0) {
-      console.log('Agent details:', agents.map(a => ({
+      console.log('Agent details:', agents.map((a: any) => ({
         id: a.id,
         name: a.name,
         enabled: a.enabled,

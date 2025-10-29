@@ -1,38 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Extract URL and key from DATABASE_URL
-// Format: postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
-function getSupabaseConfig() {
-  const dbUrl = process.env.DATABASE_URL || '';
-  
-  // Extract project ref from URL
-  const match = dbUrl.match(/postgres\.([^:]+):/);
-  const projectRef = match ? match[1] : '';
-  
-  // Extract region
-  const regionMatch = dbUrl.match(/aws-\d+-([^.]+)\./);
-  const region = regionMatch ? regionMatch[1] : 'ap-southeast-1';
-  
-  const supabaseUrl = `https://${projectRef}.supabase.co`;
-  
-  // For service role, we'll use an env var
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
-  
-  return { supabaseUrl, supabaseKey };
-}
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 export function getSupabase() {
   if (!supabaseClient) {
-    const { supabaseUrl, supabaseKey } = getSupabaseConfig();
-    
-    if (!supabaseKey) {
-      console.error('⚠️ No Supabase key found. Using Prisma fallback.');
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      console.error('⚠️ SUPABASE_URL or SUPABASE_KEY not configured');
       return null;
     }
     
-    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -43,5 +23,57 @@ export function getSupabase() {
   }
   
   return supabaseClient;
+}
+
+// Helper: Find repository by full name
+export async function findRepositoryByName(fullName: string) {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  
+  const { data, error } = await supabase
+    .from('Repository')
+    .select('id, fullName')
+    .eq('fullName', fullName)
+    .single();
+  
+  if (error) {
+    console.error('❌ Supabase query error:', error.message);
+    return null;
+  }
+  
+  return data;
+}
+
+// Helper: Find agent bindings for a repo
+export async function findAgentBindingsForRepo(repoId: string) {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  
+  const { data, error } = await supabase
+    .from('AgentRepositoryBinding')
+    .select(`
+      agentId,
+      enabled,
+      agent:Agent!inner (
+        id,
+        name,
+        enabled,
+        generationPrompt,
+        evaluationPrompt,
+        evaluationDims,
+        severityThreshold,
+        fileTypeFilters
+      )
+    `)
+    .eq('repoId', repoId)
+    .eq('enabled', true)
+    .eq('agent.enabled', true);
+  
+  if (error) {
+    console.error('❌ Supabase query error:', error.message);
+    return [];
+  }
+  
+  return data || [];
 }
 

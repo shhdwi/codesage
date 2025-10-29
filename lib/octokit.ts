@@ -1,5 +1,4 @@
 import { App } from "@octokit/app";
-import { Octokit } from "@octokit/rest";
 
 export function appClient() {
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY_B64
@@ -15,14 +14,15 @@ export function appClient() {
   });
 }
 
-export async function installationOctokit(installationId: number): Promise<Octokit | null> {
+export async function installationOctokit(installationId: number): Promise<any> {
   try {
     console.log(`🔑 Loading GitHub App credentials...`);
     const app = appClient();
     console.log(`🔑 Authenticating installation ${installationId}...`);
     const octokit = await app.getInstallationOctokit(installationId);
     console.log(`🔑 Installation authenticated successfully`);
-    return octokit as unknown as Octokit;
+    // Return the octokit directly - it has the correct type
+    return octokit;
   } catch (error: any) {
     console.error(`❌ Failed to create installation Octokit:`, error.message);
     console.error(`   Installation ID: ${installationId}`);

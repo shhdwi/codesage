@@ -66,16 +66,34 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
     
-    // Use request() method directly - @octokit/app doesn't have .pulls
-    const filesResponse = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
-      owner,
-      repo,
-      pull_number: prNumber,
-      per_page: 100,
-    });
+    let files: any[] = [];
+    try {
+      // Use request() method directly - @octokit/app doesn't have .pulls
+      console.log(`🔍 Making request to GitHub API: GET /repos/${owner}/${repo}/pulls/${prNumber}/files`);
+      const filesResponse = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
+        owner,
+        repo,
+        pull_number: prNumber,
+        per_page: 100,
+      });
+      
+      files = filesResponse.data;
+      console.log(`✅ Successfully fetched ${files.length} changed files`);
+    } catch (error: any) {
+      console.error(`❌ Failed to fetch changed files:`, error.message);
+      console.error(`   Error details:`, {
+        status: error.status,
+        name: error.name,
+        response: error.response?.data,
+      });
+      console.error(`   Stack:`, error.stack?.substring(0, 500));
+      throw error;
+    }
     
-    const files = filesResponse.data;
-    console.log(`Found ${files.length} changed files`);
+    if (files.length === 0) {
+      console.log(`⚠️ No files changed in this PR`);
+      return;
+    }
 
     // 3. Process each file with each agent
     for (const file of files) {

@@ -65,54 +65,51 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
-    console.log(`🔍 Step A: About to call octokit.request()`);
     
     let files: any[] = [];
     try {
-      // Use request() method directly - @octokit/app doesn't have .pulls
-      console.log(`🔍 Step B: Making request to GitHub API: GET /repos/${owner}/${repo}/pulls/${prNumber}/files`);
+      // Use native fetch() with AbortController for reliable timeout
+      console.log(`🔍 Using fetch() to bypass Octokit hang issue`);
       
-      // Add timeout to prevent indefinite hang
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => {
-          console.log(`⏰ Timeout triggered after 10s`);
-          reject(new Error('GitHub API request timeout after 10s'));
-        }, 10000)
-      );
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log(`⏰ Aborting request after 10s`);
+        controller.abort();
+      }, 10000);
       
-      console.log(`🔍 Step C: Created timeout promise`);
+      // Get installation token for authentication
+      console.log(`🔑 Getting installation token...`);
+      const { token } = await octokit.auth({ type: 'installation' }) as any;
+      console.log(`✅ Got installation token`);
       
-      const requestPromise = octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', {
-        owner,
-        repo,
-        pull_number: prNumber,
-        per_page: 100,
-      }).then((response: any) => {
-        console.log(`✅ Step D: Request completed successfully`);
-        return response;
+      const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`;
+      console.log(`🌐 Fetching: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': `Bearer ${token}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        signal: controller.signal,
       });
       
-      console.log(`🔍 Step E: Created request promise, starting race...`);
+      clearTimeout(timeoutId);
       
-      const filesResponse = await Promise.race([requestPromise, timeoutPromise]) as any;
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      }
       
-      console.log(`🔍 Step F: Race completed`);
-      
-      files = filesResponse.data;
+      files = await response.json();
       console.log(`✅ Successfully fetched ${files.length} changed files`);
     } catch (error: any) {
       console.error(`❌ Failed to fetch changed files:`, error.message);
-      console.error(`   Error details:`, {
-        status: error.status,
-        name: error.name,
-        response: error.response?.data,
-      });
-      console.error(`   Stack:`, error.stack?.substring(0, 500));
+      console.error(`   Error name:`, error.name);
       
-      // If it's a timeout, this means Vercel → GitHub connectivity is broken
-      if (error.message?.includes('timeout')) {
-        console.error(`   ⚠️ This is likely a network connectivity issue from Vercel to GitHub API`);
-        console.error(`   ⚠️ Vercel's serverless environment may be blocking/throttling external HTTP requests`);
+      if (error.name === 'AbortError') {
+        console.error(`   ⚠️ Request was aborted due to timeout`);
+        console.error(`   ⚠️ This suggests network connectivity issues or GitHub API being slow`);
       }
       
       throw error;
@@ -182,22 +179,52 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
           try {
-            const comment = await octokit.request('POST /repos/{owner}/{repo}/pulls/{pull_number}/comments', {
-              owner,
-              repo,
-              pull_number: prNumber,
+            console.log(`📝 Posting comment using fetch()...`);
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+              console.log(`⏰ Aborting comment post after 10s`);
+              controller.abort();
+            }, 10000);
+            
+            // Get installation token for authentication
+            const { token } = await octokit.auth({ type: 'installation' }) as any;
+            
+            const commentUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`;
+            const commentBody = {
               body: `**${agent.name}** (Severity: ${generation.severity}/5)\n\n${generation.comment}`,
               commit_id: commitSha,
               path: filePath,
               line: line.newLineNumber,
               side: "RIGHT",
+            };
+            
+            const response = await fetch(commentUrl, {
+              method: 'POST',
+              headers: {
+                'Accept': 'application/vnd.github+json',
+                'Authorization': `Bearer ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(commentBody),
+              signal: controller.signal,
             });
-            githubCommentId = BigInt(comment.data.id);
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`GitHub API error: ${response.status} ${errorText}`);
+            }
+            
+            const commentData = await response.json();
+            githubCommentId = BigInt(commentData.id);
             console.log(`✅ Comment posted successfully! GitHub comment ID: ${githubCommentId}`);
           } catch (error: any) {
             console.error(`❌ Failed to post comment:`, error.message);
             console.error(`Error details:`, {
-              status: error.status,
+              name: error.name,
               message: error.message,
               file: filePath,
               line: line.newLineNumber,

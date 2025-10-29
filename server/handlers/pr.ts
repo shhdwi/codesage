@@ -32,8 +32,8 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       where: { githubId: installationId },
       create: {
         githubId: installationId,
-        owner: event.installation.account.login,
-        ownerType: event.installation.account.type,
+        owner: event.installation?.account?.login || owner,
+        ownerType: event.installation?.account?.type || 'User',
       },
       update: {},
     });

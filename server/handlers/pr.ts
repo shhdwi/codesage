@@ -136,10 +136,10 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     let files;
     try {
       const startTime = Date.now();
-      console.log(`🔍 Step 4a: Calling octokit.pulls.listFiles...`);
+      console.log(`🔍 Step 4a: Calling octokit.rest.pulls.listFiles...`);
       
       const response = await Promise.race([
-        octokit.pulls.listFiles({
+        octokit.rest.pulls.listFiles({
           owner,
           repo,
           pull_number: prNumber,
@@ -219,7 +219,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
           try {
-            const comment = await octokit.pulls.createReviewComment({
+            const comment = await octokit.rest.pulls.createReviewComment({
               owner,
               repo,
               pull_number: prNumber,

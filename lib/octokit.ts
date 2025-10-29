@@ -15,14 +15,15 @@ export function appClient() {
   });
 }
 
-export async function installationOctokit(installationId: number): Promise<Octokit | null> {
+export async function installationOctokit(installationId: number): Promise<any> {
   try {
     console.log(`🔑 Loading GitHub App credentials...`);
     const app = appClient();
     console.log(`🔑 Authenticating installation ${installationId}...`);
     const octokit = await app.getInstallationOctokit(installationId);
     console.log(`🔑 Installation authenticated successfully`);
-    return octokit as unknown as Octokit;
+    // Return as 'any' to allow both .rest.pulls and .pulls patterns
+    return octokit;
   } catch (error: any) {
     console.error(`❌ Failed to create installation Octokit:`, error.message);
     console.error(`   Installation ID: ${installationId}`);

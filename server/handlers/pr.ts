@@ -19,22 +19,32 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Query repository with aggressive timeout
+    // 1. Query repository with aggressive timeout and verbose logging
     console.log(`Finding repository in database...`);
+    console.log(`🔍 Step 1: About to create Promise.race with 3s timeout`);
     const startTime = Date.now();
     
     let repository: { id: string; fullName: string } | null = null;
     try {
-      // Race against a 3-second timeout
-      const result = await Promise.race([
-        prisma.repository.findUnique({
-          where: { fullName: repoFullName },
-          select: { id: true, fullName: true },
-        }),
-        new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout')), 3000)
-        )
-      ]);
+      console.log(`🔍 Step 2: Creating Prisma query promise...`);
+      const prismaQuery = prisma.repository.findUnique({
+        where: { fullName: repoFullName },
+        select: { id: true, fullName: true },
+      });
+      console.log(`🔍 Step 3: Prisma query promise created`);
+      
+      console.log(`🔍 Step 4: Creating timeout promise (3000ms)...`);
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => {
+          console.log(`⏰ TIMEOUT FIRED after 3000ms!`);
+          reject(new Error('Database query timeout'));
+        }, 3000);
+      });
+      console.log(`🔍 Step 5: Timeout promise created`);
+      
+      console.log(`🔍 Step 6: Starting Promise.race...`);
+      const result = await Promise.race([prismaQuery, timeoutPromise]);
+      console.log(`🔍 Step 7: Promise.race resolved! Elapsed: ${Date.now() - startTime}ms`);
       
       repository = result;
       
@@ -46,11 +56,14 @@ export async function handlePullRequestOpenedOrSync(event: any) {
       
       console.log(`✅ Repository found (${repository.id}) in ${Date.now() - startTime}ms`);
     } catch (error: any) {
-      console.error(`❌ Database query failed after ${Date.now() - startTime}ms:`, error.message);
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ Database query failed after ${elapsed}ms:`, error.message);
       console.log(`🔍 Diagnostic info:`);
       console.log(`   - DATABASE_URL configured: ${!!process.env.DATABASE_URL}`);
       console.log(`   - Connection string starts with: ${process.env.DATABASE_URL?.substring(0, 50)}...`);
       console.log(`   - Repository: ${repoFullName}`);
+      console.log(`   - Error name: ${error.name}`);
+      console.log(`   - Error stack: ${error.stack?.substring(0, 200)}`);
       throw new Error(`Database timeout - check Supabase region latency or use connection pooler`);
     }
 

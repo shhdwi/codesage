@@ -1,4 +1,5 @@
 import { installationOctokit } from "@/lib/octokit";
+import { getInstallationToken } from "@/lib/github-auth";
 import { prisma } from "@/lib/prisma";
 import { findRepositoryByName, findAgentBindingsForRepo } from "@/lib/supabase";
 import { parseUnifiedDiff, selectChangedLines } from "@/server/diff";
@@ -77,9 +78,9 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         controller.abort();
       }, 10000);
       
-      // Get installation token for authentication
+      // Get installation token using our cached method
       console.log(`🔑 Getting installation token...`);
-      const { token } = await octokit.auth({ type: 'installation' }) as any;
+      const token = await getInstallationToken(installationId);
       console.log(`✅ Got installation token`);
       
       const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`;
@@ -187,8 +188,8 @@ export async function handlePullRequestOpenedOrSync(event: any) {
               controller.abort();
             }, 10000);
             
-            // Get installation token for authentication
-            const { token } = await octokit.auth({ type: 'installation' }) as any;
+            // Get installation token using our cached method
+            const token = await getInstallationToken(installationId);
             
             const commentUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`;
             const commentBody = {

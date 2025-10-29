@@ -24,7 +24,7 @@ export default async function DashboardLayout({
                   height={32}
                   className="transition-transform duration-200 group-hover:scale-110"
                 />
-                <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">
                   CodeSage
                 </h1>
               </Link>

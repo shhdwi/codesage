@@ -21,7 +21,7 @@ export default function SignInPage() {
               height={48}
               className="drop-shadow-md"
             />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">
               CodeSage
             </h1>
           </div>

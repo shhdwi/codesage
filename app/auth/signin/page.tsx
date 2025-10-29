@@ -15,7 +15,7 @@ export default function SignInPage() {
         <div className="text-center space-y-6">
           <div className="flex items-center justify-center gap-3 animate-slide-in">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="CodeSage Logo"
               width={48}
               height={48}

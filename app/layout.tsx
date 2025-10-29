@@ -11,6 +11,11 @@ const raleway = Raleway({
 export const metadata: Metadata = {
   title: "CodeSage - AI Code Review",
   description: "Intelligent AI-powered code review for your pull requests",
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 };
 
 export default function RootLayout({

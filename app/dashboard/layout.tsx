@@ -18,7 +18,7 @@ export default async function DashboardLayout({
             <div className="flex items-center gap-10">
               <Link href="/dashboard" className="flex items-center gap-3 group">
                 <Image
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="CodeSage Logo"
                   width={32}
                   height={32}

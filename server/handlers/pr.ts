@@ -20,20 +20,34 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const octokit = await installationOctokit(installationId);
     console.log(`✅ GitHub API client created successfully`);
 
-    // 1. Query repository using Supabase JS (HTTP - fast and reliable)
-    console.log(`Finding repository in database via Supabase...`);
-    const startTime = Date.now();
+    // 1. TEMPORARY WORKAROUND: Skip database query entirely
+    // Database queries (both Prisma and Supabase) hang indefinitely from Vercel
+    // Use environment variable to hardcode repo/agent info until we migrate Supabase to US East
+    console.log(`⚠️ Using hardcoded repository fallback to bypass database hang`);
     
-    const repositoryResult = await findRepositoryByName(repoFullName);
+    const repository: { id: string; fullName: string } = {
+      id: process.env.FALLBACK_REPO_ID || 'cmhbjq4j50000upuv4rhcdm34',
+      fullName: repoFullName,
+    };
     
-    if (!repositoryResult) {
-      console.error(`❌ Repository ${repoFullName} not found in database`);
-      console.log(`💡 Please add the repository via the dashboard first`);
-      return;
+    console.log(`✅ Repository: ${repository.fullName} (id: ${repository.id})`);
+    
+    // Load agents from environment variable as JSON
+    // Format: [{"id":"...","name":"...","enabled":true,"generationPrompt":"...","evaluationPrompt":"...","evaluationDims":[],"severityThreshold":5,"fileTypeFilters":[]}]
+    const agentsJson = process.env.FALLBACK_AGENTS || '[]';
+    let agents: any[] = [];
+    try {
+      agents = JSON.parse(agentsJson);
+      console.log(`✅ Loaded ${agents.length} agents from FALLBACK_AGENTS`);
+    } catch (error: any) {
+      console.error(`❌ Failed to parse FALLBACK_AGENTS:`, error.message);
     }
     
-    const repository: { id: string; fullName: string } = repositoryResult;
-    console.log(`✅ Repository found (${repository.id}) in ${Date.now() - startTime}ms`);
+    if (agents.length === 0) {
+      console.log("❌ No agents configured (FALLBACK_AGENTS is empty)");
+      console.log("💡 Set FALLBACK_AGENTS env var with your agent config JSON");
+      return;
+    }
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
@@ -46,31 +60,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     console.log(`Found ${files.length} changed files`);
 
-    // 3. Load enabled agents via Supabase (HTTP - fast)
-    console.log(`Looking for agent bindings for repo ID: ${repository.id}`);
-    
-    const bindings = await findAgentBindingsForRepo(repository.id);
-    const agents = bindings.map((b: any) => b.agent).filter(Boolean);
-    
-    console.log(`Found ${agents.length} enabled agents for this repo`);
-    
-    if (agents.length > 0) {
-      console.log('Agent details:', agents.map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        enabled: a.enabled,
-        severityThreshold: a.severityThreshold,
-        fileTypeFilters: a.fileTypeFilters,
-      })));
-    }
-
-    if (agents.length === 0) {
-      console.log("❌ No agents configured for this repository");
-      console.log("💡 Go to /dashboard/repos and check the checkbox for your agent!");
-      return;
-    }
-
-    // 4. Process each file with each agent
+    // 3. Process each file with each agent
     for (const file of files) {
       const filePath = file.filename;
       const patch = file.patch || "";

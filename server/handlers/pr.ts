@@ -25,6 +25,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     const startTime = Date.now();
     
     const supabase = getSupabase();
+    let repository: { id: string; fullName: string };
     
     if (!supabase) {
       console.warn('⚠️ Supabase client not available, falling back to Prisma');
@@ -43,12 +44,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         });
       }
       
-      let repository = await prisma.repository.findUnique({
+      let repo_db = await prisma.repository.findUnique({
         where: { fullName: repoFullName },
       });
       
-      if (!repository) {
-        repository = await prisma.repository.create({
+      if (!repo_db) {
+        repo_db = await prisma.repository.create({
           data: {
             fullName: repoFullName,
             installationId: installation.id,
@@ -57,6 +58,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         });
       }
       
+      repository = { id: repo_db.id, fullName: repo_db.fullName };
       console.log(`✅ Database records ready (Prisma) in ${Date.now() - startTime}ms`);
     } else {
       // Use Supabase for much faster operations
@@ -64,7 +66,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         .from('Installation')
         .select('id')
         .eq('github_id', installationId.toString())
-        .single();
+        .maybeSingle() as any;
       
       let installationId_db: string;
       
@@ -76,12 +78,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
             github_id: installationId.toString(),
             owner: event.repository.owner.login,
             owner_type: event.repository.owner.type,
-          })
+          } as any)
           .select('id')
-          .single();
+          .maybeSingle() as any;
         
         if (error) throw new Error(`Failed to create installation: ${error.message}`);
-        installationId_db = data.id;
+        installationId_db = data?.id || '';
       } else {
         installationId_db = existingInstallation.id;
       }
@@ -92,9 +94,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
         .from('Repository')
         .select('id, full_name')
         .eq('full_name', repoFullName)
-        .single();
-      
-      let repository: { id: string; fullName: string };
+        .maybeSingle() as any;
       
       if (!existingRepo) {
         console.log(`Creating new repository ${repoFullName}...`);
@@ -104,12 +104,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
             full_name: repoFullName,
             installation_id: installationId_db,
             default_branch: event.repository.default_branch,
-          })
+          } as any)
           .select('id, full_name')
-          .single();
+          .maybeSingle() as any;
         
         if (error) throw new Error(`Failed to create repository: ${error.message}`);
-        repository = { id: data.id, fullName: data.full_name };
+        repository = { id: data?.id || '', fullName: data?.full_name || repoFullName };
       } else {
         repository = { id: existingRepo.id, fullName: existingRepo.full_name };
       }

@@ -37,9 +37,6 @@ export function getSupabase() {
         persistSession: false,
         autoRefreshToken: false,
       },
-      db: {
-        schema: 'public'
-      }
     });
     
     console.log('✅ Supabase client initialized');

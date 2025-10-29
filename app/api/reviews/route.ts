@@ -57,10 +57,14 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
+    console.error('Error fetching reviews:', error);
     if (error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to fetch reviews", 
+      details: error.message 
+    }, { status: 500 });
   }
 }
 

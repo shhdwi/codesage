@@ -42,8 +42,17 @@ export default function ReviewsPage() {
 
     const response = await fetch(`/api/reviews?${params}`);
     const data = await response.json();
-    setReviews(data.reviews);
-    setTotalPages(data.pagination.totalPages);
+    
+    if (!response.ok) {
+      console.error('Failed to fetch reviews:', data);
+      setReviews([]);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
+    
+    setReviews(data.reviews || []);
+    setTotalPages(data.pagination?.totalPages || 1);
     setLoading(false);
   };
 

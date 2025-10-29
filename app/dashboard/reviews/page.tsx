@@ -14,6 +14,7 @@ interface Review {
   repo: { id: string; fullName: string };
   evaluations: Array<{ scores: Record<string, number> }>;
   feedbacks: Array<{ rating: number }>;
+  userFeedback?: number | null; // Track user's feedback
 }
 
 export default function ReviewsPage() {
@@ -57,11 +58,15 @@ export default function ReviewsPage() {
   };
 
   const submitFeedback = async (reviewId: string, rating: number) => {
-    // Optimistic UI update - instant feedback!
+    // Optimistic UI update - set the user's feedback
     setReviews(prevReviews => 
       prevReviews.map(review => 
         review.id === reviewId 
-          ? { ...review, feedbacks: [...review.feedbacks, { rating }] }
+          ? { 
+              ...review, 
+              userFeedback: rating,
+              feedbacks: [...review.feedbacks, { rating }] 
+            }
           : review
       )
     );
@@ -174,26 +179,40 @@ export default function ReviewsPage() {
 
                 {/* Feedback */}
                 <div className="ml-6 flex flex-col items-center gap-2">
-                  <p className="text-xs text-gray-500">Helpful?</p>
-                  <div className="flex gap-2">
+                  <p className="text-xs font-medium text-gray-600">Helpful?</p>
+                  <div className="flex gap-3">
                     <button
                       onClick={() => submitFeedback(review.id, 5)}
-                      className="text-lg hover:scale-110 transition-transform"
-                      title="Very helpful"
+                      disabled={review.userFeedback !== null && review.userFeedback !== undefined}
+                      className={`text-2xl transition-all duration-200 disabled:cursor-not-allowed ${
+                        review.userFeedback === 5
+                          ? 'scale-125 drop-shadow-lg'
+                          : review.userFeedback !== null && review.userFeedback !== undefined
+                          ? 'opacity-30 grayscale'
+                          : 'hover:scale-125 opacity-70 hover:opacity-100'
+                      }`}
+                      title={review.userFeedback === 5 ? "You found this helpful!" : "Very helpful"}
                     >
                       👍
                     </button>
                     <button
                       onClick={() => submitFeedback(review.id, 1)}
-                      className="text-lg hover:scale-110 transition-transform"
-                      title="Not helpful"
+                      disabled={review.userFeedback !== null && review.userFeedback !== undefined}
+                      className={`text-2xl transition-all duration-200 disabled:cursor-not-allowed ${
+                        review.userFeedback === 1
+                          ? 'scale-125 drop-shadow-lg'
+                          : review.userFeedback !== null && review.userFeedback !== undefined
+                          ? 'opacity-30 grayscale'
+                          : 'hover:scale-125 opacity-70 hover:opacity-100'
+                      }`}
+                      title={review.userFeedback === 1 ? "You found this not helpful" : "Not helpful"}
                     >
                       👎
                     </button>
                   </div>
                   {review.feedbacks.length > 0 && (
-                    <p className="text-xs text-gray-500">
-                      {review.feedbacks.length} feedback(s)
+                    <p className="text-xs text-gray-500 mt-1">
+                      {review.feedbacks.length} feedback{review.feedbacks.length !== 1 ? 's' : ''}
                     </p>
                   )}
                 </div>

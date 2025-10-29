@@ -3,9 +3,6 @@ import type { NextConfig } from "next";
 import { PrismaPlugin } from "@prisma/nextjs-monorepo-workaround-plugin";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    // Enable turbopack with empty config to suppress the warning
-  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.plugins = [...config.plugins, new PrismaPlugin()];

@@ -27,6 +27,12 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     }
     
     console.log(`✅ GitHub API client created successfully`);
+    
+    // Debug: Check octokit structure
+    console.log(`🔍 Octokit type: ${typeof octokit}`);
+    console.log(`🔍 Octokit keys: ${Object.keys(octokit || {}).join(', ')}`);
+    console.log(`🔍 Has pulls: ${!!octokit?.pulls}`);
+    console.log(`🔍 Has request: ${!!octokit?.request}`);
 
     // 1. TEMPORARY WORKAROUND: Skip database query entirely
     // Database queries (both Prisma and Supabase) hang indefinitely from Vercel

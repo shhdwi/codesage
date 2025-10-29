@@ -1,8 +1,23 @@
 import { Octokit } from "@octokit/core";
 import { createAppAuth } from "@octokit/auth-app";
 import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
+import { App } from "@octokit/app";
 
 const MyOctokit = Octokit.plugin(restEndpointMethods);
+
+export function appClient() {
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY_B64
+    ? Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY_B64, "base64").toString("utf8")
+    : process.env.GITHUB_APP_PRIVATE_KEY || "";
+
+  return new App({
+    appId: process.env.GITHUB_APP_ID!,
+    privateKey,
+    webhooks: {
+      secret: process.env.GITHUB_WEBHOOK_SECRET!,
+    },
+  });
+}
 
 export async function installationOctokit(installationId: number) {
   try {

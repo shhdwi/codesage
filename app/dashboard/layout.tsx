@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/get-session";
 import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import Image from "next/image";
+import { DashboardNav } from "@/components/DashboardNav";
 
 export default async function DashboardLayout({
   children,
@@ -12,7 +13,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white">
+      <nav className="bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between items-center">
             <div className="flex items-center gap-10">
@@ -28,38 +29,7 @@ export default async function DashboardLayout({
                   CodeSage
                 </h1>
               </Link>
-              <div className="flex space-x-8">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  Overview
-                </Link>
-                <Link
-                  href="/dashboard/agents"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Agents
-                </Link>
-                <Link
-                  href="/dashboard/repos"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Repositories
-                </Link>
-                <Link
-                  href="/dashboard/reviews"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Reviews
-                </Link>
-                <Link
-                  href="/dashboard/analytics"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                >
-                  Analytics
-                </Link>
-              </div>
+              <DashboardNav />
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{session.user?.email}</span>

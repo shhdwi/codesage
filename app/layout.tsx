@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Source_Code_Pro } from "next/font/google";
+import { Raleway } from "next/font/google";
 import "./globals.css";
 
-const sourceCodePro = Source_Code_Pro({
-  variable: "--font-source-code-pro",
+const raleway = Raleway({
+  variable: "--font-raleway",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sourceCodePro.variable} antialiased`}
+        className={`${raleway.variable} antialiased`}
       >
         {children}
       </body>

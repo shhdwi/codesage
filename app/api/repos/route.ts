@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/get-session";
-import { appClient } from "@/lib/octokit";
+import { appClient, installationOctokit } from "@/lib/octokit";
 
 async function syncRepositoriesFromGitHub() {
   const app = appClient();
   
   try {
-    // Get all installations for this app
-    const installations = await app.octokit.request("GET /app/installations");
+    // Get all installations for this app using the app-level octokit
+    const installations = await app.octokit.request("GET /app/installations", {
+      headers: {
+        'X-GitHub-Api-Version': '2022-11-28',
+      }
+    });
     
     for (const inst of installations.data) {
       const installationId = inst.id;
@@ -27,10 +31,14 @@ async function syncRepositoriesFromGitHub() {
       });
 
       // Get repositories for this installation
-      const octokit = await app.getInstallationOctokit(installationId);
-      const { data: reposResponse } = await octokit.request(
-        "GET /installation/repositories"
-      );
+      const octokit = await installationOctokit(installationId);
+      
+      if (!octokit) {
+        console.error(`Failed to create octokit for installation ${installationId}`);
+        continue;
+      }
+      
+      const { data: reposResponse } = await octokit.rest.apps.listReposAccessibleToInstallation();
 
       // Sync repositories
       for (const repo of reposResponse.repositories) {

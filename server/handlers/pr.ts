@@ -26,6 +26,13 @@ export async function handlePullRequestOpenedOrSync(event: any) {
     }
     
     console.log(`✅ GitHub API client created successfully`);
+    console.log(`📊 Memory usage:`, process.memoryUsage());
+    console.log(`⏰ Current time:`, new Date().toISOString());
+    console.log(`🔢 Installation ID:`, installationId);
+    console.log(`📦 Repository:`, repoFullName);
+    console.log(`🔍 PR Number:`, prNumber);
+    console.log(`💾 DATABASE_URL exists:`, !!process.env.DATABASE_URL);
+    console.log(`💾 DATABASE_URL starts with:`, process.env.DATABASE_URL?.substring(0, 50));
 
     // 1. Find or create installation and repository
     console.log(`🔍 Step 1: About to upsert installation (githubId: ${installationId})`);

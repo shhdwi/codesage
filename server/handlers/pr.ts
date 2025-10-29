@@ -59,7 +59,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
 
     // 2. Get files changed in PR
     console.log(`Fetching changed files from PR #${prNumber}...`);
-    const { data: files } = await octokit.rest.pulls.listFiles({
+    const { data: files } = await octokit.pulls.listFiles({
       owner,
       repo,
       pull_number: prNumber,
@@ -127,7 +127,7 @@ export async function handlePullRequestOpenedOrSync(event: any) {
           // Post review comment to GitHub
           let githubCommentId: bigint | null = null;
           try {
-            const comment = await octokit.rest.pulls.createReviewComment({
+            const comment = await octokit.pulls.createReviewComment({
               owner,
               repo,
               pull_number: prNumber,
